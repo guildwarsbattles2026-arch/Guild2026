@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FF GuildwarsBattles2026 | Admin</title>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+
+<style>
+:root{
+  --bg:#0a0a0a; --card:#1a1a1a; --border:#2e2e2e;
+  --text:#e6e6e6; --accent:#9e9e9e;
+  --success:#4caf50; --warn:#ff9800; --danger:#b00020;
+  --font:'Segoe UI', system-ui;
+}
+*{box-sizing:border-box;font-family:var(--font)}
+body{margin:0;background:var(--bg);color:var(--text)}
+header{padding:20px;text-align:center;font-size:22px;font-weight:700;background:#000;border-bottom:1px solid var(--border)}
+.container{max-width:1100px;margin:30px auto;padding:20px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;margin-bottom:25px}
+.section-title{font-size:20px;margin:25px 0 15px;opacity:.85}
+input,textarea,select{width:100%;margin:6px 0;padding:10px;background:#000;color:var(--text);border:1px solid var(--border);border-radius:8px}
+button{padding:10px 16px;border:none;border-radius:10px;font-weight:600;cursor:pointer}
+.add-event{background:var(--accent);color:#000}
+.approve{background:var(--success);color:#000}
+.suspend{background:var(--warn);color:#000}
+.ban{background:var(--danger);color:#fff}
+.badges{display:flex;gap:12px;margin:10px 0}
+.badges img{width:48px;height:48px;border-radius:10px;border:2px solid transparent;cursor:pointer}
+.badges img.selected{border-color:var(--accent)}
+.inline{display:flex;align-items:center;gap:8px}
+</style>
+</head>
+
+<body>
+<header>FF GuildwarsBattles2026 — ADMIN PANEL</header>
+
+<div class="container">
+
+<!-- ================= EVENTS ================= -->
+<div class="card">
+  <div class="section-title">Créer un événement</div>
+  <input id="eventTitle" placeholder="Nom événement">
+  <input type="date" id="eventDate">
+  <textarea id="eventDesc" placeholder="Description"></textarea>
+  <button class="add-event" id="createEvent">Ajouter</button>
+</div>
+
+<div class="section-title">Événements</div>
+<div id="eventList"></div>
+
+<!-- ================= GUILDES ================= -->
+<div class="section-title">Gestion des guildes</div>
+<div id="guildList"></div>
+
+<!-- ================= JOUEURS ================= -->
+<div class="section-title">Gestion des joueurs</div>
+<div id="userList"></div>
+
+</div>
+
+<script>
+/* 🔥 FIREBASE */
+firebase.initializeApp({
+  apiKey:"YOUR_API_KEY",
+  projectId:"YOUR_PROJECT_ID"
+});
+const db = firebase.firestore();
+const auth = firebase.auth();
+
+/* 🔐 UID ADMIN UNIQUE */
+const ADMIN_UID = "TON_UID_ADMIN_ICI";
+
+/* 🔒 Sécurité accès admin */
+auth.onAuthStateChanged(async user=>{
+  if(!user || user.uid !== ADMIN_UID){
+    alert("Accès refusé");
+    location.href="index.html";
+  }
+});
+
+/* ================= EVENTS ================= */
+createEvent.onclick = async ()=>{
+  if(!eventTitle.value||!eventDate.value)return alert("Champs requis");
+  await db.collection("events").add({
+    title:eventTitle.value,
+    date:eventDate.value,
+    description:eventDesc.value,
+    createdAt:firebase.firestore.FieldValue.serverTimestamp()
+  });
+  eventTitle.value="";eventDate.value="";eventDesc.value="";
+  loadEvents();
+};
+
+async function loadEvents(){
+  eventList.innerHTML="";
+  const snap=await db.collection("events").get();
+  snap.forEach(d=>{
+    eventList.innerHTML+=`
+      <div class="card"><b>${d.data().title}</b> — ${d.data().date}</div>
+    `;
+  });
+}
+
+/* ================= GUILDES ================= */
+async function loadGuilds(){
+  guildList.innerHTML="";
+  const snap=await db.collection("guilds").get();
+
+  snap.forEach(doc=>{
+    const g=doc.data();
+    let selectedBadge=g.badge||"";
+
+    const card=document.createElement("div");
+    card.className="card";
+    card.innerHTML=`
+      <div class="inline">
+        ${g.badge?`<img src="${g.badge}" width="32">`:``}
+        <b>${g.name}</b>
+      </div>
+
+      Niveau :
+      <select id="lvl_${doc.id}">
+        ${[1,2,3,4,5].map(l=>`<option ${g.level==l?"selected":""}>${l}</option>`)}
+      </select>
+
+      <div class="badges">
+        ${["badges/badge_v.png","badges/badge1.png","badges/badge2.png"].map(b=>`
+          <img src="${b}" data-b="${b}" class="${b==selectedBadge?"selected":""}">
+        `).join("")}
+      </div>
+
+      <button class="approve">Approuver</button>
+      <button class="suspend">Suspendre</button>
+      <button class="ban">Bannir</button>
+    `;
+
+    card.querySelectorAll("img[data-b]").forEach(img=>{
+      img.onclick=()=>{
+        card.querySelectorAll("img").forEach(i=>i.classList.remove("selected"));
+        img.classList.add("selected");
+        selectedBadge=img.dataset.b;
+      };
+    });
+
+    card.querySelector(".approve").onclick=()=>{
+      db.collection("guilds").doc(doc.id).update({
+        status:"approved",
+        level:+document.getElementById(`lvl_${doc.id}`).value,
+        badge:selectedBadge
+      });
+    };
+
+    ["suspend","ban"].forEach(type=>{
+      card.querySelector("."+type).onclick=()=>{
+        db.collection("guilds").doc(doc.id).update({status:type});
+        db.collection("sanctions").add({
+          type,
+          target:"guild",
+          guildId:doc.id,
+          date:firebase.firestore.FieldValue.serverTimestamp()
+        });
+      };
+    });
+
+    guildList.appendChild(card);
+  });
+}
+
+/* ================= USERS ================= */
+async function loadUsers(){
+  userList.innerHTML="";
+  const snap=await db.collection("users").get();
+
+  snap.forEach(doc=>{
+    const u=doc.data();
+    const card=document.createElement("div");
+    card.className="card";
+    card.innerHTML=`
+      <b>${u.prenom||""} ${u.nom||""}</b> (${u.email||""})
+      <br>
+      Rôle :
+      <select id="r_${doc.id}">
+        <option value="member" ${u.role=="member"?"selected":""}>member</option>
+        <option value="leader" ${u.role=="leader"?"selected":""}>leader</option>
+      </select>
+      <br><br>
+      <button class="approve">Sauver</button>
+      <button class="suspend">Suspendre</button>
+      <button class="ban">Bannir</button>
+    `;
+
+    card.querySelector(".approve").onclick=()=>{
+      db.collection("users").doc(doc.id).update({
+        role:document.getElementById(`r_${doc.id}`).value
+      });
+    };
+
+    ["suspend","ban"].forEach(type=>{
+      card.querySelector("."+type).onclick=()=>{
+        db.collection("users").doc(doc.id).update({status:type});
+        db.collection("sanctions").add({
+          type,
+          target:"user",
+          userId:doc.id,
+          date:firebase.firestore.FieldValue.serverTimestamp()
+        });
+      };
+    });
+
+    userList.appendChild(card);
+  });
+}
+
+/* INIT */
+loadEvents();
+loadGuilds();
+loadUsers();
+</script>
+</body>
+</html>

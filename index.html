@@ -44,7 +44,7 @@ button{padding:10px 16px;border:none;border-radius:10px;font-weight:600;cursor:p
 
 <!-- LOGIN GOOGLE -->
 <div class="card" id="loginCard">
-  <b>Connexion Admin</b><br><br>
+  <b>Connexion Membre</b><br><br>
   <button id="googleSignIn" class="add-event">Se connecter avec Google</button>
 </div>
 
@@ -82,24 +82,14 @@ firebase.initializeApp({
 const db = firebase.firestore();
 const auth = firebase.auth();
 
-/* 🔐 UID ADMIN UNIQUE */
-const ADMIN_UID = "TON_UID_ADMIN_ICI";
-
 /* ===== GOOGLE SIGN-IN ===== */
 const googleProvider = new firebase.auth.GoogleAuthProvider();
 
 document.getElementById("googleSignIn").onclick = () => {
   auth.signInWithPopup(googleProvider)
     .then(result => {
-      const user = result.user;
-      if(user.uid !== ADMIN_UID){
-        alert("⚠ Accès refusé");
-        auth.signOut();
-      } else {
-        alert("✅ Connecté en tant qu'Admin");
-        document.getElementById("loginCard").style.display="none";
-        document.querySelector(".container").style.display="block";
-      }
+      // Redirige tous les membres connectés vers live.html
+      window.location.href = "live.html";
     })
     .catch(err => {
       console.error(err);
@@ -109,12 +99,13 @@ document.getElementById("googleSignIn").onclick = () => {
 
 /* Vérification automatique */
 auth.onAuthStateChanged(user=>{
-  if(!user || user.uid !== ADMIN_UID){
+  if(user){
+    // Si connecté, redirige vers live.html
+    window.location.href = "live.html";
+  } else {
+    // Sinon affiche le login
     document.getElementById("loginCard").style.display="block";
     document.querySelector(".container").style.display="none";
-  } else {
-    document.getElementById("loginCard").style.display="none";
-    document.querySelector(".container").style.display="block";
   }
 });
 

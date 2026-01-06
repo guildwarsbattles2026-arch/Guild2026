@@ -3,150 +3,157 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FF GuildwarsBattles2026 | Membre</title>
+<title>FF GuildwarsBattles2026 | Live</title>
 
 <!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 
 <style>
 :root{
-  --bg:#0a0a0a;
-  --card:#1a1a1a;
-  --border:#2e2e2e;
-  --text:#e6e6e6;
-  --accent:#9e9e9e;
+  --bg:#0a0a0a; --card:#1a1a1a; --border:#2e2e2e;
+  --text:#e6e6e6; --accent:#9e9e9e;
+  --success:#4caf50; --warn:#ff9800; --danger:#b00020;
   --font:'Segoe UI', system-ui;
-  --success:#4caf50;
-  --warn:#ff9800;
-  --danger:#b00020;
 }
-
 *{box-sizing:border-box;font-family:var(--font)}
-
-body{
-  margin:0;
-  background:var(--bg);
-  color:var(--text);
-}
-
-header{
-  padding:20px;
-  text-align:center;
-  font-size:22px;
-  font-weight:700;
-  background:#000;
-  border-bottom:1px solid var(--border);
-}
-
-.container{
-  max-width:900px;
-  margin:30px auto;
-  padding:20px;
-}
-
-.guild-card{
-  background:var(--card);
-  border:1px solid var(--border);
-  border-radius:14px;
-  padding:20px;
-  margin-bottom:20px;
-  display:flex;
-  align-items:center;
-  gap:20px;
-}
-
-.guild-card img{
-  width:80px;
-  height:80px;
-  border-radius:12px;
-  border:2px solid var(--accent);
-}
-
-.guild-info{
-  flex:1;
-}
-
-.guild-info h2{
-  margin:0 0 5px;
-  font-size:20px;
-}
-
-.guild-info p{
-  margin:2px 0;
-  font-size:14px;
-  opacity:.8;
-}
+body{margin:0;background:var(--bg);color:var(--text)}
+header{padding:15px;text-align:center;font-size:22px;font-weight:700;background:#000;border-bottom:1px solid var(--border)}
+.container{max-width:1200px;margin:20px auto;padding:10px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:15px;margin-bottom:20px}
+.inline{display:flex;align-items:center;gap:8px}
+.profile-pic{width:60px;height:60px;border-radius:50%;cursor:pointer;border:2px solid var(--accent)}
+.guild-badge{width:48px;height:48px;border-radius:10px;margin-left:8px;border:2px solid var(--accent)}
+.guild-member{display:flex;align-items:center;gap:6px;margin:4px 0}
+.guild-member img{width:32px;height:32px;border-radius:6px}
+.flex-row{display:flex;gap:20px;flex-wrap:wrap}
+.live-card{flex:1;min-width:350px;max-width:600px}
+.timer{margin-top:6px;font-size:14px;color:#ccc}
 </style>
 </head>
 <body>
+<header>FF GuildwarsBattles2026 — LIVE</header>
 
-<header>FF GuildwarsBattles2026 — Membre</header>
+<div class="container">
 
-<div class="container" id="guildContainer">
-Chargement des informations...
+  <!-- PROFIL CONNECTÉ -->
+  <div class="card inline" id="userProfile">
+    <img id="profilePic" class="profile-pic" src="" alt="Profil">
+    <div>
+      <b id="profileName">Nom Membre</b><br>
+      <span id="profileEmail"></span>
+    </div>
+  </div>
+
+  <!-- VOIR MA GUILDE -->
+  <div class="card" id="myGuildCard">
+    <div class="section-title">Ma Guilde</div>
+    <div id="myGuildContent"></div>
+  </div>
+
+  <!-- AFFRONTEMENTS LIVE -->
+  <div class="flex-row" id="liveBattles"></div>
+
 </div>
 
 <script>
-/* 🔥 Firebase config (À REMPLACER) */
-const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_DOMAIN",
-  projectId: "YOUR_PROJECT_ID"
-};
-
-firebase.initializeApp(firebaseConfig);
+/* 🔥 FIREBASE CONFIG */
+firebase.initializeApp({
+  apiKey:"YOUR_API_KEY",
+  authDomain:"YOUR_PROJECT_ID.firebaseapp.com",
+  projectId:"YOUR_PROJECT_ID"
+});
 const db = firebase.firestore();
 const auth = firebase.auth();
 
-/* 📥 Récupération infos membre et guilde */
+/* ===== CONNEXION AUTOMATIQUE ===== */
 auth.onAuthStateChanged(async user=>{
   if(!user){
-    document.getElementById("guildContainer").innerHTML = "Connectez-vous pour voir votre guilde.";
+    location.href="index.html"; // pas connecté, retour au login
     return;
   }
 
-  const uid = user.uid;
+  // Profil connecté
+  document.getElementById("profilePic").src = user.photoURL || "https://via.placeholder.com/60";
+  document.getElementById("profileName").textContent = user.displayName || "Membre";
+  document.getElementById("profileEmail").textContent = user.email;
 
-  // On suppose que chaque membre a un document "users/{uid}" avec guildId et role
-  const userDoc = await db.collection("users").doc(uid).get();
-  if(!userDoc.exists){
-    document.getElementById("guildContainer").innerHTML = "Profil introuvable.";
-    return;
-  }
+  document.getElementById("profilePic").onclick = ()=>{
+    alert(`Profil de ${user.displayName || "Membre"}\nEmail: ${user.email}`);
+  };
 
-  const userData = userDoc.data();
-  const guildId = userData.guildId;
-  const role = userData.role || "Member";
-
-  if(!guildId){
-    document.getElementById("guildContainer").innerHTML = "Vous n'êtes pas encore dans une guilde.";
-    return;
-  }
-
-  const guildDoc = await db.collection("guilds").doc(guildId).get();
-  if(!guildDoc.exists){
-    document.getElementById("guildContainer").innerHTML = "Guilde introuvable.";
-    return;
-  }
-
-  const g = guildDoc.data();
-
-  const container = document.getElementById("guildContainer");
-  container.innerHTML = `
-    <div class="guild-card">
-      <img src="${g.badge || 'badges/default.png'}" alt="Badge guilde">
-      <div class="guild-info">
-        <h2>${g.name}</h2>
-        <p>Niveau : ${g.level || 1}</p>
-        <p>Rôle : ${role}</p>
-        <p>Statut : ${g.status || "en attente"}</p>
-      </div>
-    </div>
-  `;
+  loadMyGuild(user.uid);
+  loadLiveBattles();
 });
-</script>
 
+/* ================= VOIR MA GUILDE ================= */
+async function loadMyGuild(uid){
+  const snap = await db.collection("guilds").where(`members.${uid}.status`,`==`,"approved").get();
+  if(snap.empty){
+    document.getElementById("myGuildContent").innerHTML="Vous n'êtes dans aucune guilde.";
+    return;
+  }
+
+  snap.forEach(doc=>{
+    const g = doc.data();
+    const badge = g.badge ? `<img class="guild-badge" src="${g.badge}">` : "";
+    const membersHTML = Object.entries(g.members).map(([mUid, m])=>{
+      const mBadge = m.badge ? `<img class="guild-badge" src="${m.badge}">` : "";
+      return `<div class="guild-member"><b>${m.name || mUid}</b>${mBadge}</div>`;
+    }).join("");
+
+    document.getElementById("myGuildContent").innerHTML = `
+      <div class="inline">
+        <b>${g.name}</b>${badge} — Chef: ${g.members[g.leader]?.name || g.leader || "?"} 
+        ${g.members[g.leader]?.badge ? `<img class="guild-badge" src="${g.members[g.leader].badge}">` : ""}
+      </div>
+      <div>${membersHTML}</div>
+    `;
+  });
+}
+
+/* ================= AFFRONTEMENTS LIVE ================= */
+async function loadLiveBattles(){
+  const snap = await db.collection("guilds").where("status","==","approved").get();
+  const container = document.getElementById("liveBattles");
+  container.innerHTML="";
+
+  snap.forEach(doc=>{
+    const g = doc.data();
+    const badge = g.badge ? `<img class="guild-badge" src="${g.badge}">` : "";
+    const membersHTML = Object.entries(g.members).map(([mUid, m])=>{
+      const mBadge = m.badge ? `<img class="guild-badge" src="${m.badge}">` : "";
+      return `<div class="guild-member"><b>${m.name || mUid}</b>${mBadge}</div>`;
+    }).join("");
+
+    // Chronomètre simple (depuis l'heure d'approbation si existante)
+    let timerHTML = "";
+    if(g.approvedAt){
+      const start = g.approvedAt.toMillis ? g.approvedAt.toMillis() : g.approvedAt;
+      timerHTML = `<div class="timer" data-start="${start}">Temps écoulé: 0s</div>`;
+    }
+
+    const card = document.createElement("div");
+    card.className="card live-card";
+    card.innerHTML=`
+      <div class="inline"><b>${g.name}</b>${badge}</div>
+      ${membersHTML}
+      ${timerHTML}
+    `;
+    container.appendChild(card);
+  });
+
+  // Mettre à jour les timers toutes les secondes
+  setInterval(()=>{
+    document.querySelectorAll(".timer").forEach(t=>{
+      const start = +t.dataset.start;
+      const elapsed = Math.floor((Date.now() - start)/1000);
+      t.textContent = `Temps écoulé: ${elapsed}s`;
+    });
+  },1000);
+}
+
+</script>
 </body>
 </html>

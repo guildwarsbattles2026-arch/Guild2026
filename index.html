@@ -3,156 +3,256 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FF GuildwarsBattles2026 | Connexion</title>
+<title>FF GuildwarsBattles2026 | Admin</title>
+
+<!-- Firebase compat pour Auth, Firestore -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 
 <style>
 :root{
-  --bg:#0a0a0a;
-  --card:#1a1a1a;
-  --border:#2e2e2e;
-  --text:#e6e6e6;
-  --accent:#9e9e9e;
+  --bg:#0a0a0a; --card:#1a1a1a; --border:#2e2e2e;
+  --text:#e6e6e6; --accent:#9e9e9e;
+  --success:#4caf50; --warn:#ff9800; --danger:#b00020;
   --font:'Segoe UI', system-ui;
 }
 *{box-sizing:border-box;font-family:var(--font)}
-body{
-  margin:0;
-  background:var(--bg);
-  color:var(--text);
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  height:100vh;
-}
-.login-card{
-  background:var(--card);
-  border:1px solid var(--border);
-  border-radius:14px;
-  padding:28px;
-  width:340px;
-  display:flex;
-  flex-direction:column;
-  gap:12px;
-}
-.login-card h2{
-  margin:0 0 10px;
-  text-align:center;
-  color:var(--accent);
-  font-size:20px;
-}
-button{
-  padding:11px;
-  border-radius:8px;
-  border:none;
-  background:var(--accent);
-  color:#000;
-  font-weight:700;
-  cursor:pointer;
-}
-.google-btn{
-  background:#fff;
-  color:#000;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  gap:8px;
-}
-.google-btn img{
-  width:18px;
-}
-.small{
-  font-size:12px;
-  opacity:.6;
-  text-align:center;
-}
+body{margin:0;background:var(--bg);color:var(--text)}
+header{padding:20px;text-align:center;font-size:22px;font-weight:700;background:#000;border-bottom:1px solid var(--border)}
+.container{max-width:1100px;margin:30px auto;padding:20px; display:none;}
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;margin-bottom:25px}
+.section-title{font-size:20px;margin:25px 0 15px;opacity:.85}
+input,textarea,select{width:100%;margin:6px 0;padding:10px;background:#000;color:var(--text);border:1px solid var(--border);border-radius:8px}
+button{padding:10px 16px;border:none;border-radius:10px;font-weight:600;cursor:pointer}
+.add-event{background:var(--accent);color:#000}
+.approve{background:var(--success);color:#000}
+.suspend{background:var(--warn);color:#000}
+.ban{background:var(--danger);color:#fff}
+.badges{display:flex;gap:12px;margin:10px 0}
+.badges img{width:48px;height:48px;border-radius:10px;border:2px solid transparent;cursor:pointer}
+.badges img.selected{border-color:var(--accent)}
+.inline{display:flex;align-items:center;gap:8px}
+
+/* Login Card */
+#loginCard{max-width:400px;margin:50px auto;padding:20px;text-align:center;border-radius:12px;background:#111;box-shadow:0 4px 12px #000;}
 </style>
 </head>
 
 <body>
+<header>FF GuildwarsBattles2026 — ADMIN PANEL</header>
 
-<div class="login-card">
-  <h2>FF GuildwarsBattles2026</h2>
-
-  <button class="google-btn" id="googleBtn">
-    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg">
-    Connexion avec Google
-  </button>
-
-  <div class="small">Connexion sécurisée via Firebase</div>
+<!-- LOGIN GOOGLE -->
+<div class="card" id="loginCard">
+  <b>Connexion Admin</b><br><br>
+  <button id="googleSignIn" class="add-event">Se connecter avec Google</button>
 </div>
 
-<!-- 🔥 FIREBASE -->
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { 
-  getAuth,
-  GoogleAuthProvider,
-  signInWithPopup
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-import { 
-  getFirestore,
-  doc,
-  setDoc,
-  getDoc,
-  serverTimestamp
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+<div class="container">
 
-/* 🔑 CONFIG FIREBASE – guildwarsbattles2026 */
-const firebaseConfig = {
-  apiKey: "TA_API_KEY",
-  authDomain: "guildwarsbattles2026.firebaseapp.com",
-  projectId: "guildwarsbattles2026",
-  storageBucket: "guildwarsbattles2026.appspot.com",
-  messagingSenderId: "XXXX",
-  appId: "XXXX"
+  <!-- ================= EVENTS ================= -->
+  <div class="card">
+    <div class="section-title">Créer un événement</div>
+    <input id="eventTitle" placeholder="Nom événement">
+    <input type="date" id="eventDate">
+    <textarea id="eventDesc" placeholder="Description"></textarea>
+    <button class="add-event" id="createEvent">Ajouter</button>
+  </div>
+
+  <div class="section-title">Événements</div>
+  <div id="eventList"></div>
+
+  <!-- ================= GUILDES ================= -->
+  <div class="section-title">Gestion des guildes</div>
+  <div id="guildList"></div>
+
+  <!-- ================= JOUEURS ================= -->
+  <div class="section-title">Gestion des joueurs</div>
+  <div id="userList"></div>
+
+</div>
+
+<script>
+/* 🔥 FIREBASE CONFIG */
+firebase.initializeApp({
+  apiKey:"YOUR_API_KEY",
+  authDomain:"YOUR_PROJECT_ID.firebaseapp.com",
+  projectId:"YOUR_PROJECT_ID"
+});
+const db = firebase.firestore();
+const auth = firebase.auth();
+
+/* 🔐 UID ADMIN UNIQUE */
+const ADMIN_UID = "TON_UID_ADMIN_ICI";
+
+/* ===== GOOGLE SIGN-IN ===== */
+const googleProvider = new firebase.auth.GoogleAuthProvider();
+
+document.getElementById("googleSignIn").onclick = () => {
+  auth.signInWithPopup(googleProvider)
+    .then(result => {
+      const user = result.user;
+      if(user.uid !== ADMIN_UID){
+        alert("⚠ Accès refusé");
+        auth.signOut();
+      } else {
+        alert("✅ Connecté en tant qu'Admin");
+        document.getElementById("loginCard").style.display="none";
+        document.querySelector(".container").style.display="block";
+      }
+    })
+    .catch(err => {
+      console.error(err);
+      alert("Erreur de connexion Google : " + err.message);
+    });
 };
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-const provider = new GoogleAuthProvider();
-
-/* 🔵 GOOGLE LOGIN */
-document.getElementById("googleBtn").onclick = async ()=>{
-  try{
-    const result = await signInWithPopup(auth, provider);
-    const user = result.user;
-
-    const userRef = doc(db,"users",user.uid);
-    const snap = await getDoc(userRef);
-
-    if(!snap.exists()){
-      await setDoc(userRef,{
-        uid: user.uid,
-        fullname: user.displayName,
-        email: user.email,
-        photo: user.photoURL,
-        role: "member",
-        guildId: null,
-        createdAt: serverTimestamp(),
-        lastLogin: serverTimestamp()
-      });
-    }else{
-      await setDoc(userRef,{
-        lastLogin: serverTimestamp()
-      },{merge:true});
-    }
-
-    sessionStorage.setItem("ff_user",JSON.stringify({
-      uid: user.uid,
-      fullname: user.displayName,
-      email: user.email,
-      role: snap.exists() ? snap.data().role : "member",
-      guildId: snap.exists() ? snap.data().guildId : null
-    }));
-
-    window.location.href = "membre.html";
-
-  }catch(err){
-    alert("❌ Erreur connexion Google : "+err.message);
+/* Vérification automatique */
+auth.onAuthStateChanged(user=>{
+  if(!user || user.uid !== ADMIN_UID){
+    document.getElementById("loginCard").style.display="block";
+    document.querySelector(".container").style.display="none";
+  } else {
+    document.getElementById("loginCard").style.display="none";
+    document.querySelector(".container").style.display="block";
   }
-};
-</script>
+});
 
+/* ================= EVENTS ================= */
+createEvent.onclick = async ()=>{
+  if(!eventTitle.value||!eventDate.value)return alert("Champs requis");
+  await db.collection("events").add({
+    title:eventTitle.value,
+    date:eventDate.value,
+    description:eventDesc.value,
+    createdAt:firebase.firestore.FieldValue.serverTimestamp()
+  });
+  eventTitle.value="";eventDate.value="";eventDesc.value="";
+  loadEvents();
+};
+
+async function loadEvents(){
+  eventList.innerHTML="";
+  const snap=await db.collection("events").get();
+  snap.forEach(d=>{
+    eventList.innerHTML+=`<div class="card"><b>${d.data().title}</b> — ${d.data().date}</div>`;
+  });
+}
+
+/* ================= GUILDES ================= */
+async function loadGuilds(){
+  guildList.innerHTML="";
+  const snap=await db.collection("guilds").get();
+
+  snap.forEach(doc=>{
+    const g=doc.data();
+    let selectedBadge=g.badge||"";
+
+    const card=document.createElement("div");
+    card.className="card";
+    card.innerHTML=`
+      <div class="inline">
+        ${g.badge?`<img src="${g.badge}" width="32">`:``}
+        <b>${g.name}</b>
+      </div>
+
+      Niveau :
+      <select id="lvl_${doc.id}">
+        ${[1,2,3,4,5].map(l=>`<option ${g.level==l?"selected":""}>${l}</option>`)}
+      </select>
+
+      <div class="badges">
+        ${["badges/badge_v.png","badges/badge1.png","badges/badge2.png"].map(b=>`
+          <img src="${b}" data-b="${b}" class="${b==selectedBadge?"selected":""}">
+        `).join("")}
+      </div>
+
+      <button class="approve">Approuver</button>
+      <button class="suspend">Suspendre</button>
+      <button class="ban">Bannir</button>
+    `;
+
+    card.querySelectorAll("img[data-b]").forEach(img=>{
+      img.onclick=()=>{
+        card.querySelectorAll("img").forEach(i=>i.classList.remove("selected"));
+        img.classList.add("selected");
+        selectedBadge=img.dataset.b;
+      };
+    });
+
+    card.querySelector(".approve").onclick=()=>{
+      db.collection("guilds").doc(doc.id).update({
+        status:"approved",
+        level:+document.getElementById(`lvl_${doc.id}`).value,
+        badge:selectedBadge
+      });
+    };
+
+    ["suspend","ban"].forEach(type=>{
+      card.querySelector("."+type).onclick=()=>{
+        db.collection("guilds").doc(doc.id).update({status:type});
+        db.collection("sanctions").add({
+          type,
+          target:"guild",
+          guildId:doc.id,
+          date:firebase.firestore.FieldValue.serverTimestamp()
+        });
+      };
+    });
+
+    guildList.appendChild(card);
+  });
+}
+
+/* ================= USERS ================= */
+async function loadUsers(){
+  userList.innerHTML="";
+  const snap=await db.collection("users").get();
+
+  snap.forEach(doc=>{
+    const u=doc.data();
+    const card=document.createElement("div");
+    card.className="card";
+    card.innerHTML=`
+      <b>${u.prenom||""} ${u.nom||""}</b> (${u.email||""})
+      <br>
+      Rôle :
+      <select id="r_${doc.id}">
+        <option value="member" ${u.role=="member"?"selected":""}>member</option>
+        <option value="leader" ${u.role=="leader"?"selected":""}>leader</option>
+      </select>
+      <br><br>
+      <button class="approve">Sauver</button>
+      <button class="suspend">Suspendre</button>
+      <button class="ban">Bannir</button>
+    `;
+
+    card.querySelector(".approve").onclick=()=>{
+      db.collection("users").doc(doc.id).update({
+        role:document.getElementById(`r_${doc.id}`).value
+      });
+    };
+
+    ["suspend","ban"].forEach(type=>{
+      card.querySelector("."+type).onclick=()=>{
+        db.collection("users").doc(doc.id).update({status:type});
+        db.collection("sanctions").add({
+          type,
+          target:"user",
+          userId:doc.id,
+          date:firebase.firestore.FieldValue.serverTimestamp()
+        });
+      };
+    });
+
+    userList.appendChild(card);
+  });
+}
+
+/* INIT */
+loadEvents();
+loadGuilds();
+loadUsers();
+</script>
 </body>
 </html>

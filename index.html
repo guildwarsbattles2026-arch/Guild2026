@@ -60,20 +60,14 @@ input{
   background:#111;
   color:#fff;
 }
-form{
-  display:none;
-}
-.active{
-  display:block;
-}
+form{display:none}
+.active{display:block}
 .switch-btns{
   display:flex;
   justify-content:space-between;
   margin-bottom:20px;
 }
-.switch-btns button{
-  width:48%;
-}
+.switch-btns button{width:48%}
 footer{
   text-align:center;
   margin-top:30px;
@@ -113,7 +107,6 @@ footer{
   </form>
 
   <hr style="margin:20px 0;">
-  <!-- GOOGLE LOGIN -->
   <button id="googleLoginBtn">🔐 Se connecter avec Google</button>
 
 </div>
@@ -122,17 +115,30 @@ footer{
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-import { getFirestore, doc, setDoc, getDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { 
+  getAuth,
+  GoogleAuthProvider,
+  signInWithPopup,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { 
+  getFirestore,
+  doc,
+  setDoc,
+  getDoc,
+  serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-/* 🔥 CONFIG FIREBASE */
+/* 🔥 CONFIG FIREBASE (MISE À JOUR) */
 const firebaseConfig = {
-  apiKey: "VOTRE_API_KEY",
-  authDomain: "VOTRE_PROJECT_ID.firebaseapp.com",
-  projectId: "VOTRE_PROJECT_ID",
-  storageBucket: "VOTRE_PROJECT_ID.appspot.com",
-  messagingSenderId: "VOTRE_SENDER_ID",
-  appId: "VOTRE_APP_ID"
+  apiKey: "AIzaSyCGuqE5sC6uRppfdsNXLSQEOjvm0doYOr4",
+  authDomain: "guildwarsbattles2026.firebaseapp.com",
+  projectId: "guildwarsbattles2026",
+  storageBucket: "guildwarsbattles2026.firebasestorage.app",
+  messagingSenderId: "116728335274",
+  appId: "1:116728335274:web:3a245ad4254caebeb779d3"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -143,11 +149,11 @@ const provider = new GoogleAuthProvider();
 /* SWITCH FORMULAIRES */
 const loginForm = document.getElementById("loginForm");
 const signupForm = document.getElementById("signupForm");
-document.getElementById("showLogin").onclick = () => {
+document.getElementById("showLogin").onclick = ()=>{
   loginForm.classList.add("active");
   signupForm.classList.remove("active");
 };
-document.getElementById("showSignup").onclick = () => {
+document.getElementById("showSignup").onclick = ()=>{
   signupForm.classList.add("active");
   loginForm.classList.remove("active");
 };
@@ -155,12 +161,14 @@ document.getElementById("showSignup").onclick = () => {
 /* LOGIN EMAIL/PASSWORD */
 loginForm.onsubmit = async (e)=>{
   e.preventDefault();
-  const email = document.getElementById("loginEmail").value.trim();
-  const password = document.getElementById("loginPassword").value;
   try{
-    await signInWithEmailAndPassword(auth,email,password);
+    await signInWithEmailAndPassword(
+      auth,
+      loginEmail.value.trim(),
+      loginPassword.value
+    );
     window.location.href = "live.html";
-  }catch(err){
+  }catch{
     alert("⚠️ Email ou mot de passe incorrect !");
   }
 };
@@ -168,34 +176,35 @@ loginForm.onsubmit = async (e)=>{
 /* SIGNUP EMAIL/PASSWORD */
 signupForm.onsubmit = async (e)=>{
   e.preventDefault();
-  const fullname = document.getElementById("fullname").value.trim();
-  const email = document.getElementById("signupEmail").value.trim();
-  const password = document.getElementById("signupPassword").value;
   try{
-    const userCred = await createUserWithEmailAndPassword(auth,email,password);
-    const user = userCred.user;
-    await setDoc(doc(db,"users",user.uid),{
-      fullname,
-      email,
+    const cred = await createUserWithEmailAndPassword(
+      auth,
+      signupEmail.value.trim(),
+      signupPassword.value
+    );
+    await setDoc(doc(db,"users",cred.user.uid),{
+      fullname: fullname.value.trim(),
+      email: signupEmail.value.trim(),
       role:"user",
       createdAt: serverTimestamp(),
       lastLogin: serverTimestamp()
     });
     window.location.href = "live.html";
   }catch(err){
-    alert("⚠️ Erreur : "+err.message);
+    alert("⚠️ Erreur : " + err.message);
   }
 };
 
 /* GOOGLE LOGIN */
-document.getElementById("googleLoginBtn").onclick = async ()=>{
+googleLoginBtn.onclick = async ()=>{
   try{
     const result = await signInWithPopup(auth, provider);
     const user = result.user;
-    const userRef = doc(db,"users",user.uid);
-    const snap = await getDoc(userRef);
+    const ref = doc(db,"users",user.uid);
+    const snap = await getDoc(ref);
+
     if(!snap.exists()){
-      await setDoc(userRef,{
+      await setDoc(ref,{
         fullname:user.displayName,
         email:user.email,
         role:"user",
@@ -204,22 +213,24 @@ document.getElementById("googleLoginBtn").onclick = async ()=>{
         lastLogin:serverTimestamp()
       });
     }else{
-      await setDoc(userRef,{lastLogin:serverTimestamp()},{merge:true});
+      await setDoc(ref,{lastLogin:serverTimestamp()},{merge:true});
     }
+
     sessionStorage.setItem("dpstore_user",JSON.stringify({
       fullname:user.displayName,
       email:user.email,
       role:snap.exists()?snap.data().role:"user",
       photo:user.photoURL
     }));
+
     window.location.href = "live.html";
   }catch(e){
-    alert("❌ Erreur connexion Google : "+e.message);
+    alert("❌ Erreur connexion Google : " + e.message);
   }
 };
 
-/* AUTO REDIRECTION SI DÉJÀ CONNECTÉ */
-auth.onAuthStateChanged(user=>{
+/* AUTO REDIRECTION */
+onAuthStateChanged(auth,user=>{
   if(user){
     window.location.href = "live.html";
   }

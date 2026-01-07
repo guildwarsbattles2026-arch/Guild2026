@@ -6,85 +6,33 @@
 <title>FF GuildwarsBattles2026 | Connexion</title>
 
 <style>
-body{
-  margin:0;
-  font-family:'Poppins',sans-serif;
-  background:linear-gradient(135deg,#000,#2c2c2c);
-  color:#fff;
-  text-align:center;
+:root{
+  --bg:#0a0a0a; --card:#1a1a1a; --border:#2e2e2e;
+  --text:#e6e6e6; --accent:#9e9e9e;
+  --success:#4caf50; --warn:#ff9800; --danger:#b00020;
+  --font:'Segoe UI', system-ui;
 }
-header{
-  background:rgba(0,0,0,0.7);
-  padding:20px;
-  border-bottom:1px solid rgba(255,255,255,0.15);
-}
-header h1{
-  margin:0;
-  font-size:2rem;
-  background:linear-gradient(90deg,#fff,#aaa);
-  -webkit-background-clip:text;
-  -webkit-text-fill-color:transparent;
-}
-.container{
-  max-width:420px;
-  margin:40px auto;
-  background:rgba(255,255,255,0.08);
-  border-radius:18px;
-  padding:25px;
-  box-shadow:0 0 25px rgba(0,170,255,0.25);
-  text-align:center;
-}
-button{
-  width:100%;
-  padding:14px;
-  border:none;
-  border-radius:14px;
-  background:#00aaff;
-  color:#000;
-  font-size:1rem;
-  font-weight:bold;
-  cursor:pointer;
-  transition:0.25s;
-  margin-bottom:10px;
-}
-button:hover{
-  background:#FFD700;
-  box-shadow:0 0 15px #FFD700aa;
-}
-input{
-  width:100%;
-  padding:12px;
-  margin-bottom:12px;
-  border-radius:12px;
-  border:1px solid #444;
-  background:#111;
-  color:#fff;
-}
+*{box-sizing:border-box;font-family:var(--font)}
+body{margin:0;background:var(--bg);color:var(--text)}
+header{padding:15px;text-align:center;font-size:22px;font-weight:700;background:#000;border-bottom:1px solid var(--border)}
+.container{max-width:420px;margin:20px auto;padding:20px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:15px;margin-bottom:20px;text-align:center}
+input{width:100%;padding:12px;margin-bottom:12px;border-radius:12px;border:1px solid #444;background:#111;color:#fff}
+button{width:100%;padding:14px;border:none;border-radius:14px;background:#00aaff;color:#000;font-size:1rem;font-weight:bold;cursor:pointer;transition:0.25s;margin-bottom:10px}
+button:hover{background:#FFD700;box-shadow:0 0 15px #FFD700aa}
 form{display:none}
 .active{display:block}
-.switch-btns{
-  display:flex;
-  justify-content:space-between;
-  margin-bottom:20px;
-}
+.switch-btns{display:flex;justify-content:space-between;margin-bottom:20px}
 .switch-btns button{width:48%}
-footer{
-  text-align:center;
-  margin-top:30px;
-  font-size:0.85rem;
-  color:#aaa;
-}
+footer{text-align:center;margin-top:30px;font-size:0.85rem;color:#aaa}
 </style>
 </head>
 
 <body>
 
-<header>
-  <h1>FF GuildwarsBattles2026</h1>
-  <p>Connexion sécurisée avec Google ou email</p>
-</header>
+<header>FF GuildwarsBattles2026 — Connexion</header>
 
-<div class="container">
+<div class="container card">
 
   <div class="switch-btns">
     <button id="showLogin">🔐 Connexion</button>
@@ -167,7 +115,7 @@ loginForm.onsubmit = async (e)=>{
       loginEmail.value.trim(),
       loginPassword.value
     );
-    window.location.href = "live.html"; // <-- redirection après connexion
+    window.location.href = "live.html";
   }catch{
     alert("⚠️ Email ou mot de passe incorrect !");
   }
@@ -189,7 +137,7 @@ signupForm.onsubmit = async (e)=>{
       createdAt: serverTimestamp(),
       lastLogin: serverTimestamp()
     });
-    window.location.href = "live.html"; // <-- redirection après inscription
+    window.location.href = "live.html";
   }catch(err){
     alert("⚠️ Erreur : " + err.message);
   }
@@ -223,7 +171,7 @@ googleLoginBtn.onclick = async ()=>{
       photo:user.photoURL
     }));
 
-    window.location.href = "live.html"; // <-- redirection après Google login
+    window.location.href = "live.html";
   }catch(e){
     alert("❌ Erreur connexion Google : " + e.message);
   }
@@ -232,7 +180,7 @@ googleLoginBtn.onclick = async ()=>{
 /* AUTO REDIRECTION SI CONNECTÉ */
 onAuthStateChanged(auth,user=>{
   if(user){
-    window.location.href = "live.html"; // <-- auto redirection
+    window.location.href = "live.html"; // redirection automatique
   }
 });
 </script>

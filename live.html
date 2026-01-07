@@ -81,22 +81,19 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-/* ===== CONNEXION AUTOMATIQUE ===== */
+/* ===== CONNEXION OBLIGATOIRE ===== */
 onAuthStateChanged(auth, async user=>{
-  // Si aucun utilisateur connecté → redirection vers index.html
   if(!user){
-    location.href="index.html";
+    location.href="index.html"; // ← redirection obligatoire si pas connecté
     return;
   }
 
-  // Afficher profil
   profilePic.src = user.photoURL || "https://via.placeholder.com/60";
   profileName.textContent = user.displayName || "Membre";
   profileEmail.textContent = user.email;
 
-  // Redirection vers profil.html quand on clique sur le profil
   document.getElementById("userProfile").onclick = ()=>{
-    window.location.href = "profil.html";
+    window.location.href = "profil.html"; // → page profil
   };
 
   loadMyGuild(user.uid);
@@ -105,10 +102,7 @@ onAuthStateChanged(auth, async user=>{
 
 /* ================= MA GUILDE ================= */
 async function loadMyGuild(uid){
-  const q = query(
-    collection(db,"guilds"),
-    where(`members.${uid}.status`,"==","approved")
-  );
+  const q = query(collection(db,"guilds"), where(`members.${uid}.status`,"==","approved"));
   const snap = await getDocs(q);
 
   if(snap.empty){
@@ -119,16 +113,13 @@ async function loadMyGuild(uid){
   snap.forEach(doc=>{
     const g = doc.data();
     const badge = g.badge ? `<img class="guild-badge" src="${g.badge}">` : "";
-
     const membersHTML = Object.entries(g.members).map(([id,m])=>{
       const b = m.badge ? `<img class="guild-badge" src="${m.badge}">` : "";
       return `<div class="guild-member"><b>${m.name || id}</b>${b}</div>`;
     }).join("");
 
     myGuildContent.innerHTML = `
-      <div class="inline">
-        <b>${g.name}</b>${badge}
-      </div>
+      <div class="inline"><b>${g.name}</b>${badge}</div>
       <div>${membersHTML}</div>
     `;
   });
@@ -136,17 +127,13 @@ async function loadMyGuild(uid){
 
 /* ================= AFFRONTEMENTS LIVE ================= */
 async function loadLiveBattles(){
-  const q = query(
-    collection(db,"guilds"),
-    where("status","==","approved")
-  );
+  const q = query(collection(db,"guilds"), where("status","==","approved"));
   const snap = await getDocs(q);
   liveBattles.innerHTML="";
 
   snap.forEach(doc=>{
     const g = doc.data();
     const badge = g.badge ? `<img class="guild-badge" src="${g.badge}">` : "";
-
     const membersHTML = Object.entries(g.members).map(([id,m])=>{
       const b = m.badge ? `<img class="guild-badge" src="${m.badge}">` : "";
       return `<div class="guild-member"><b>${m.name || id}</b>${b}</div>`;
@@ -154,19 +141,13 @@ async function loadLiveBattles(){
 
     let timerHTML = "";
     if(g.approvedAt){
-      const start = g.approvedAt.seconds
-        ? g.approvedAt.seconds * 1000
-        : g.approvedAt;
+      const start = g.approvedAt.seconds ? g.approvedAt.seconds*1000 : g.approvedAt;
       timerHTML = `<div class="timer" data-start="${start}">Temps écoulé: 0s</div>`;
     }
 
     const card = document.createElement("div");
     card.className="card live-card";
-    card.innerHTML = `
-      <div class="inline"><b>${g.name}</b>${badge}</div>
-      ${membersHTML}
-      ${timerHTML}
-    `;
+    card.innerHTML = `<div class="inline"><b>${g.name}</b>${badge}</div>${membersHTML}${timerHTML}`;
     liveBattles.appendChild(card);
   });
 

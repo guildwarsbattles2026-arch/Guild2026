@@ -131,7 +131,7 @@ import {
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-/* 🔥 CONFIG FIREBASE (MISE À JOUR) */
+/* 🔥 CONFIG FIREBASE */
 const firebaseConfig = {
   apiKey: "AIzaSyCGuqE5sC6uRppfdsNXLSQEOjvm0doYOr4",
   authDomain: "guildwarsbattles2026.firebaseapp.com",
@@ -167,7 +167,7 @@ loginForm.onsubmit = async (e)=>{
       loginEmail.value.trim(),
       loginPassword.value
     );
-    window.location.href = "live.html";
+    window.location.href = "live.html"; // <-- redirection après connexion
   }catch{
     alert("⚠️ Email ou mot de passe incorrect !");
   }
@@ -189,7 +189,7 @@ signupForm.onsubmit = async (e)=>{
       createdAt: serverTimestamp(),
       lastLogin: serverTimestamp()
     });
-    window.location.href = "live.html";
+    window.location.href = "live.html"; // <-- redirection après inscription
   }catch(err){
     alert("⚠️ Erreur : " + err.message);
   }
@@ -223,16 +223,16 @@ googleLoginBtn.onclick = async ()=>{
       photo:user.photoURL
     }));
 
-    window.location.href = "live.html";
+    window.location.href = "live.html"; // <-- redirection après Google login
   }catch(e){
     alert("❌ Erreur connexion Google : " + e.message);
   }
 };
 
-/* AUTO REDIRECTION */
+/* AUTO REDIRECTION SI CONNECTÉ */
 onAuthStateChanged(auth,user=>{
   if(user){
-    window.location.href = "live.html";
+    window.location.href = "live.html"; // <-- auto redirection
   }
 });
 </script>

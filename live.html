@@ -17,8 +17,8 @@ body{margin:0;background:var(--bg);color:var(--text)}
 header{padding:15px;text-align:center;font-size:22px;font-weight:700;background:#000;border-bottom:1px solid var(--border)}
 .container{max-width:1200px;margin:20px auto;padding:10px}
 .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:15px;margin-bottom:20px}
-.inline{display:flex;align-items:center;gap:8px}
-.profile-pic{width:60px;height:60px;border-radius:50%;cursor:pointer;border:2px solid var(--accent)}
+.inline{display:flex;align-items:center;gap:8px;cursor:pointer;}
+.profile-pic{width:60px;height:60px;border-radius:50%;border:2px solid var(--accent)}
 .guild-badge{width:48px;height:48px;border-radius:10px;margin-left:8px;border:2px solid var(--accent)}
 .guild-member{display:flex;align-items:center;gap:6px;margin:4px 0}
 .guild-member img{width:32px;height:32px;border-radius:6px}
@@ -67,7 +67,7 @@ import {
   getDocs
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-/* 🔥 CONFIG FIREBASE (IDENTIQUE À index.html) */
+/* 🔥 CONFIG FIREBASE */
 const firebaseConfig = {
   apiKey: "AIzaSyCGuqE5sC6uRppfdsNXLSQEOjvm0doYOr4",
   authDomain: "guildwarsbattles2026.firebaseapp.com",
@@ -92,8 +92,9 @@ onAuthStateChanged(auth, async user=>{
   profileName.textContent = user.displayName || "Membre";
   profileEmail.textContent = user.email;
 
-  profilePic.onclick = ()=>{
-    alert(`Profil de ${user.displayName || "Membre"}\nEmail: ${user.email}`);
+  // REDIRECTION VERS PROFIL
+  document.getElementById("userProfile").onclick = ()=>{
+    window.location.href = "profil.html";
   };
 
   loadMyGuild(user.uid);

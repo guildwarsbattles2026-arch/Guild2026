@@ -12,21 +12,13 @@
   --border:#2e2e2e;
   --text:#e6e6e6;
   --accent:#9e9e9e;
-  --font:'Segoe UI', system-ui;
 }
-
-*{
-  box-sizing:border-box;
-  font-family:var(--font);
-}
-
+*{box-sizing:border-box;font-family:'Segoe UI',system-ui}
 body{
   margin:0;
   background:var(--bg);
   color:var(--text);
-  display:none; /* empêche le flash */
 }
-
 header{
   padding:18px;
   text-align:center;
@@ -35,13 +27,11 @@ header{
   background:#000;
   border-bottom:1px solid var(--border);
 }
-
 .container{
   max-width:420px;
   margin:60px auto;
   padding:20px;
 }
-
 .card{
   background:var(--card);
   border:1px solid var(--border);
@@ -49,38 +39,25 @@ header{
   padding:25px;
   text-align:center;
 }
-
-.google-btn{
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  gap:12px;
+button{
   width:100%;
   padding:14px;
-  margin-top:20px;
-  border:none;
   border-radius:14px;
+  border:1px solid var(--border);
   background:#fff;
   color:#000;
-  font-weight:700;
-  font-size:16px;
+  font-size:15px;
+  font-weight:600;
   cursor:pointer;
-  transition:0.25s;
+  transition:.25s;
 }
-
-.google-btn:hover{
-  transform:scale(1.03);
+button:hover{
+  background:#eaeaea;
 }
-
-.google-btn img{
-  width:22px;
-  height:22px;
-}
-
 footer{
-  margin-top:40px;
+  margin-top:30px;
   text-align:center;
-  font-size:0.85rem;
+  font-size:13px;
   color:#888;
 }
 </style>
@@ -92,12 +69,12 @@ footer{
 
 <div class="container">
   <div class="card">
-    <h2>Connexion sécurisée</h2>
-    <p>Connectez-vous avec votre compte Google</p>
+    <h3>Connexion requise</h3>
+    <p>Connecte-toi avec Google pour accéder au LIVE</p>
 
-    <button id="googleLoginBtn" class="google-btn">
-      <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg">
-      Se connecter avec Google
+    <!-- GOOGLE LOGIN -->
+    <button id="googleLoginBtn">
+      Continuer avec Google
     </button>
   </div>
 </div>
@@ -106,21 +83,14 @@ footer{
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { 
+import {
   getAuth,
   GoogleAuthProvider,
   signInWithPopup,
   onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-import { 
-  getFirestore,
-  doc,
-  setDoc,
-  getDoc,
-  serverTimestamp
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-/* 🔥 FIREBASE CONFIG */
+/* FIREBASE CONFIG */
 const firebaseConfig = {
   apiKey: "AIzaSyCGuqE5sC6uRppfdsNXLSQEOjvm0doYOr4",
   authDomain: "guildwarsbattles2026.firebaseapp.com",
@@ -132,45 +102,24 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
 
-/* 🔐 Vérifie si déjà connecté */
-onAuthStateChanged(auth, user=>{
-  if(user){
-    window.location.href = "live.html";
-  }else{
-    document.body.style.display = "block";
-  }
-});
-
-/* 🔑 Connexion Google */
+/* LOGIN GOOGLE */
 document.getElementById("googleLoginBtn").onclick = async ()=>{
   try{
-    const result = await signInWithPopup(auth, provider);
-    const user = result.user;
-
-    const ref = doc(db,"users",user.uid);
-    const snap = await getDoc(ref);
-
-    if(!snap.exists()){
-      await setDoc(ref,{
-        fullname: user.displayName,
-        email: user.email,
-        photo: user.photoURL,
-        role: "user",
-        createdAt: serverTimestamp(),
-        lastLogin: serverTimestamp()
-      });
-    }else{
-      await setDoc(ref,{ lastLogin: serverTimestamp() },{ merge:true });
-    }
-
+    await signInWithPopup(auth, provider);
     window.location.href = "live.html";
   }catch(e){
-    alert("Erreur connexion Google : " + e.message);
+    alert("Erreur connexion Google");
   }
 };
+
+/* AUTO REDIRECTION */
+onAuthStateChanged(auth,user=>{
+  if(user){
+    window.location.href="live.html";
+  }
+});
 </script>
 
 </body>

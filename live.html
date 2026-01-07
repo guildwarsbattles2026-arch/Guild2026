@@ -83,16 +83,18 @@ const db = getFirestore(app);
 
 /* ===== CONNEXION AUTOMATIQUE ===== */
 onAuthStateChanged(auth, async user=>{
+  // Si aucun utilisateur connecté → redirection vers index.html
   if(!user){
     location.href="index.html";
     return;
   }
 
+  // Afficher profil
   profilePic.src = user.photoURL || "https://via.placeholder.com/60";
   profileName.textContent = user.displayName || "Membre";
   profileEmail.textContent = user.email;
 
-  // REDIRECTION VERS PROFIL
+  // Redirection vers profil.html quand on clique sur le profil
   document.getElementById("userProfile").onclick = ()=>{
     window.location.href = "profil.html";
   };

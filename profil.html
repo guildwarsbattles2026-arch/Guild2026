@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Profil | FF GuildwarsBattles2026</title>
+
+<style>
+body{
+  margin:0;
+  font-family:'Poppins',sans-serif;
+  background:linear-gradient(135deg,#000,#2c2c2c);
+  color:#fff;
+  text-align:center;
+}
+header{
+  background:rgba(0,0,0,0.7);
+  padding:20px;
+  border-bottom:1px solid rgba(255,255,255,0.15);
+}
+header h1{
+  margin:0;
+  font-size:2rem;
+  background:linear-gradient(90deg,#fff,#aaa);
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+}
+.container{
+  max-width:420px;
+  margin:40px auto;
+  background:rgba(255,255,255,0.08);
+  border-radius:18px;
+  padding:25px;
+  box-shadow:0 0 25px rgba(0,170,255,0.25);
+  text-align:center;
+}
+button{
+  width:100%;
+  padding:14px;
+  border:none;
+  border-radius:14px;
+  background:#00aaff;
+  color:#000;
+  font-size:1rem;
+  font-weight:bold;
+  cursor:pointer;
+  transition:0.25s;
+  margin-bottom:10px;
+}
+button:hover{
+  background:#FFD700;
+  box-shadow:0 0 15px #FFD700aa;
+}
+.profile-pic{
+  width:120px;
+  height:120px;
+  border-radius:50%;
+  border:3px solid #00aaff;
+  margin-bottom:15px;
+}
+.info{margin:10px 0; font-size:1rem; text-align:left;}
+.info b{display:inline-block; width:100px;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Mon Profil</h1>
+</header>
+
+<div class="container">
+  <img id="profilePic" class="profile-pic" src="" alt="Photo Profil">
+  <div class="info"><b>Nom :</b> <span id="profileName"></span></div>
+  <div class="info"><b>Email :</b> <span id="profileEmail"></span></div>
+  <div class="info"><b>Rôle :</b> <span id="profileRole"></span></div>
+  <div class="info"><b>Dernière connexion :</b> <span id="lastLogin"></span></div>
+  <button id="requestGuildBtn">Demander création de guilde</button>
+  <button id="logoutBtn">Se déconnecter</button>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+/* 🔥 CONFIG FIREBASE */
+const firebaseConfig = {
+  apiKey: "AIzaSyCGuqE5sC6uRppfdsNXLSQEOjvm0doYOr4",
+  authDomain: "guildwarsbattles2026.firebaseapp.com",
+  projectId: "guildwarsbattles2026",
+  storageBucket: "guildwarsbattles2026.firebasestorage.app",
+  messagingSenderId: "116728335274",
+  appId: "1:116728335274:web:3a245ad4254caebeb779d3"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+/* Vérifie si connecté */
+onAuthStateChanged(auth, async user => {
+  if(!user){
+    window.location.href = "index.html";
+    return;
+  }
+
+  // Récupérer données utilisateur depuis Firestore
+  const ref = doc(db,"users",user.uid);
+  const snap = await getDoc(ref);
+  const data = snap.exists() ? snap.data() : {};
+
+  document.getElementById("profilePic").src = user.photoURL || "https://via.placeholder.com/120";
+  document.getElementById("profileName").textContent = data.fullname || user.displayName || "Membre";
+  document.getElementById("profileEmail").textContent = user.email;
+  document.getElementById("profileRole").textContent = data.role || "user";
+  document.getElementById("lastLogin").textContent = data.lastLogin ? new Date(data.lastLogin.seconds*1000).toLocaleString() : "Inconnu";
+});
+
+/* Rediriger vers la page de demande de guilde */
+document.getElementById("requestGuildBtn").onclick = ()=>{
+  window.location.href = "demande-guilde.html";
+};
+
+/* Déconnexion */
+document.getElementById("logoutBtn").onclick = async ()=>{
+  await signOut(auth);
+  window.location.href = "index.html";
+};
+</script>
+
+</body>
+</html>

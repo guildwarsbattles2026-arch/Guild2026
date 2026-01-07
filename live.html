@@ -5,11 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FF GuildwarsBattles2026 | Live</title>
 
-<!-- Firebase -->
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-
 <style>
 :root{
   --bg:#0a0a0a; --card:#1a1a1a; --border:#2e2e2e;
@@ -32,6 +27,7 @@ header{padding:15px;text-align:center;font-size:22px;font-weight:700;background:
 .timer{margin-top:6px;font-size:14px;color:#ccc}
 </style>
 </head>
+
 <body>
 <header>FF GuildwarsBattles2026 — LIVE</header>
 
@@ -46,7 +42,7 @@ header{padding:15px;text-align:center;font-size:22px;font-weight:700;background:
     </div>
   </div>
 
-  <!-- VOIR MA GUILDE -->
+  <!-- MA GUILDE -->
   <div class="card" id="myGuildCard">
     <div class="section-title">Ma Guilde</div>
     <div id="myGuildContent"></div>
@@ -57,29 +53,46 @@ header{padding:15px;text-align:center;font-size:22px;font-weight:700;background:
 
 </div>
 
-<script>
-/* 🔥 FIREBASE CONFIG */
-firebase.initializeApp({
-  apiKey:"YOUR_API_KEY",
-  authDomain:"YOUR_PROJECT_ID.firebaseapp.com",
-  projectId:"YOUR_PROJECT_ID"
-});
-const db = firebase.firestore();
-const auth = firebase.auth();
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { 
+  getAuth,
+  onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { 
+  getFirestore,
+  collection,
+  query,
+  where,
+  getDocs
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+/* 🔥 CONFIG FIREBASE (IDENTIQUE À index.html) */
+const firebaseConfig = {
+  apiKey: "AIzaSyCGuqE5sC6uRppfdsNXLSQEOjvm0doYOr4",
+  authDomain: "guildwarsbattles2026.firebaseapp.com",
+  projectId: "guildwarsbattles2026",
+  storageBucket: "guildwarsbattles2026.firebasestorage.app",
+  messagingSenderId: "116728335274",
+  appId: "1:116728335274:web:3a245ad4254caebeb779d3"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
 
 /* ===== CONNEXION AUTOMATIQUE ===== */
-auth.onAuthStateChanged(async user=>{
+onAuthStateChanged(auth, async user=>{
   if(!user){
-    location.href="index.html"; // pas connecté, retour au login
+    location.href="index.html";
     return;
   }
 
-  // Profil connecté
-  document.getElementById("profilePic").src = user.photoURL || "https://via.placeholder.com/60";
-  document.getElementById("profileName").textContent = user.displayName || "Membre";
-  document.getElementById("profileEmail").textContent = user.email;
+  profilePic.src = user.photoURL || "https://via.placeholder.com/60";
+  profileName.textContent = user.displayName || "Membre";
+  profileEmail.textContent = user.email;
 
-  document.getElementById("profilePic").onclick = ()=>{
+  profilePic.onclick = ()=>{
     alert(`Profil de ${user.displayName || "Membre"}\nEmail: ${user.email}`);
   };
 
@@ -87,26 +100,31 @@ auth.onAuthStateChanged(async user=>{
   loadLiveBattles();
 });
 
-/* ================= VOIR MA GUILDE ================= */
+/* ================= MA GUILDE ================= */
 async function loadMyGuild(uid){
-  const snap = await db.collection("guilds").where(`members.${uid}.status`,`==`,"approved").get();
+  const q = query(
+    collection(db,"guilds"),
+    where(`members.${uid}.status`,"==","approved")
+  );
+  const snap = await getDocs(q);
+
   if(snap.empty){
-    document.getElementById("myGuildContent").innerHTML="Vous n'êtes dans aucune guilde.";
+    myGuildContent.innerHTML = "Vous n'êtes dans aucune guilde.";
     return;
   }
 
   snap.forEach(doc=>{
     const g = doc.data();
     const badge = g.badge ? `<img class="guild-badge" src="${g.badge}">` : "";
-    const membersHTML = Object.entries(g.members).map(([mUid, m])=>{
-      const mBadge = m.badge ? `<img class="guild-badge" src="${m.badge}">` : "";
-      return `<div class="guild-member"><b>${m.name || mUid}</b>${mBadge}</div>`;
+
+    const membersHTML = Object.entries(g.members).map(([id,m])=>{
+      const b = m.badge ? `<img class="guild-badge" src="${m.badge}">` : "";
+      return `<div class="guild-member"><b>${m.name || id}</b>${b}</div>`;
     }).join("");
 
-    document.getElementById("myGuildContent").innerHTML = `
+    myGuildContent.innerHTML = `
       <div class="inline">
-        <b>${g.name}</b>${badge} — Chef: ${g.members[g.leader]?.name || g.leader || "?"} 
-        ${g.members[g.leader]?.badge ? `<img class="guild-badge" src="${g.members[g.leader].badge}">` : ""}
+        <b>${g.name}</b>${badge}
       </div>
       <div>${membersHTML}</div>
     `;
@@ -115,36 +133,40 @@ async function loadMyGuild(uid){
 
 /* ================= AFFRONTEMENTS LIVE ================= */
 async function loadLiveBattles(){
-  const snap = await db.collection("guilds").where("status","==","approved").get();
-  const container = document.getElementById("liveBattles");
-  container.innerHTML="";
+  const q = query(
+    collection(db,"guilds"),
+    where("status","==","approved")
+  );
+  const snap = await getDocs(q);
+  liveBattles.innerHTML="";
 
   snap.forEach(doc=>{
     const g = doc.data();
     const badge = g.badge ? `<img class="guild-badge" src="${g.badge}">` : "";
-    const membersHTML = Object.entries(g.members).map(([mUid, m])=>{
-      const mBadge = m.badge ? `<img class="guild-badge" src="${m.badge}">` : "";
-      return `<div class="guild-member"><b>${m.name || mUid}</b>${mBadge}</div>`;
+
+    const membersHTML = Object.entries(g.members).map(([id,m])=>{
+      const b = m.badge ? `<img class="guild-badge" src="${m.badge}">` : "";
+      return `<div class="guild-member"><b>${m.name || id}</b>${b}</div>`;
     }).join("");
 
-    // Chronomètre simple (depuis l'heure d'approbation si existante)
     let timerHTML = "";
     if(g.approvedAt){
-      const start = g.approvedAt.toMillis ? g.approvedAt.toMillis() : g.approvedAt;
+      const start = g.approvedAt.seconds
+        ? g.approvedAt.seconds * 1000
+        : g.approvedAt;
       timerHTML = `<div class="timer" data-start="${start}">Temps écoulé: 0s</div>`;
     }
 
     const card = document.createElement("div");
     card.className="card live-card";
-    card.innerHTML=`
+    card.innerHTML = `
       <div class="inline"><b>${g.name}</b>${badge}</div>
       ${membersHTML}
       ${timerHTML}
     `;
-    container.appendChild(card);
+    liveBattles.appendChild(card);
   });
 
-  // Mettre à jour les timers toutes les secondes
   setInterval(()=>{
     document.querySelectorAll(".timer").forEach(t=>{
       const start = +t.dataset.start;
@@ -153,7 +175,7 @@ async function loadLiveBattles(){
     });
   },1000);
 }
-
 </script>
+
 </body>
 </html>

@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FF GuildwarsBattles2026 | Statut de la Guilde</title>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+<style>
+:root{
+  --bg:#0a0a0a;
+  --card:#1a1a1a;
+  --border:#2e2e2e;
+  --text:#e6e6e6;
+  --pending:#ff9800;
+  --approved:#4caf50;
+  --refused:#b00020;
+  --font:'Segoe UI', system-ui;
+}
+
+*{box-sizing:border-box;font-family:var(--font)}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
+  text-align:center;
+}
+header{
+  padding:20px;
+  font-size:22px;
+  font-weight:700;
+  background:#000;
+  border-bottom:1px solid var(--border);
+}
+.container{
+  max-width:500px;
+  margin:40px auto;
+  padding:20px;
+}
+.card{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:16px;
+  padding:25px;
+}
+.status{
+  font-size:24px;
+  margin-bottom:10px;
+  font-weight:700;
+}
+.pending{color:var(--pending)}
+.approved{color:var(--approved)}
+.refused{color:var(--refused)}
+.guild-logo{
+  width:120px;
+  height:120px;
+  border-radius:50%;
+  border:3px solid var(--border);
+  object-fit:cover;
+  margin:15px auto;
+}
+.info{
+  text-align:left;
+  margin:8px 0;
+}
+button{
+  width:100%;
+  margin-top:15px;
+  padding:12px;
+  border-radius:12px;
+  border:none;
+  font-weight:600;
+  cursor:pointer;
+}
+.back{
+  background:#9e9e9e;
+  color:#000;
+}
+.retry{
+  background:var(--pending);
+  color:#000;
+}
+</style>
+</head>
+
+<body>
+
+<header>FF GuildwarsBattles2026 — Statut de la Guilde</header>
+
+<div class="container">
+  <div class="card" id="content">
+    <p>Chargement du statut...</p>
+  </div>
+</div>
+
+<script>
+/* 🔥 Firebase config */
+firebase.initializeApp({
+  apiKey:"YOUR_API_KEY",
+  projectId:"YOUR_PROJECT_ID"
+});
+const db = firebase.firestore();
+
+/* Récupérer leaderUID depuis localStorage ou prompt */
+let leaderUID = localStorage.getItem("leaderUID");
+if(!leaderUID){
+  leaderUID = prompt("Entrez l’UID du chef de guilde");
+  if(leaderUID) localStorage.setItem("leaderUID",leaderUID);
+}
+
+async function loadStatus(){
+  const snap = await db.collection("guilds")
+    .where("leaderUID","==",leaderUID)
+    .orderBy("createdAt","desc")
+    .limit(1)
+    .get();
+
+  const content = document.getElementById("content");
+
+  if(snap.empty){
+    content.innerHTML = `
+      <h3>Aucune demande trouvée</h3>
+      <button class="back" onclick="window.location.href='index.html'">
+        Retour
+      </button>
+    `;
+    return;
+  }
+
+  const data = snap.docs[0].data();
+  const status = data.status;
+
+  if(status === "pending"){
+    content.innerHTML = `
+      <div class="status pending">⏳ En attente</div>
+      <img class="guild-logo" src="${data.logo}">
+      <div class="info"><b>Guilde :</b> ${data.name}</div>
+      <div class="info"><b>Chef :</b> ${data.leaderName}</div>
+      <p>Votre demande est en cours de vérification.</p>
+      <button class="back" onclick="location.reload()">Actualiser</button>
+    `;
+  }
+
+  if(status === "approved"){
+    content.innerHTML = `
+      <div class="status approved">✅ Guilde approuvée</div>
+      <img class="guild-logo" src="${data.logo}">
+      <div class="info"><b>Guilde :</b> ${data.name}</div>
+      <div class="info"><b>Membres :</b> ${data.membersCount}</div>
+      <p>Félicitations ! Votre guilde est officielle 🎉</p>
+      <button class="back" onclick="window.location.href='dashboard.html'">
+        Accéder au tableau de bord
+      </button>
+    `;
+  }
+
+  if(status === "refused"){
+    content.innerHTML = `
+      <div class="status refused">❌ Demande refusée</div>
+      <img class="guild-logo" src="${data.logo}">
+      <div class="info"><b>Guilde :</b> ${data.name}</div>
+      <p>Votre demande a été refusée.</p>
+      <button class="retry" onclick="retryRequest()">Faire une nouvelle demande</button>
+    `;
+  }
+}
+
+function retryRequest(){
+  localStorage.removeItem("leaderUID");
+  window.location.href = "index.html";
+}
+
+loadStatus();
+</script>
+
+</body>
+</html>

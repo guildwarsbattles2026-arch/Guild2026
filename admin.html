@@ -29,12 +29,14 @@ input,textarea,select{
 }
 button{
   padding:10px 16px;border:none;border-radius:10px;
-  font-weight:600;cursor:pointer
+  font-weight:600;cursor:pointer;margin-right:6px
 }
 .add-event{background:var(--accent);color:#000}
 .approve{background:var(--success);color:#000}
+.refuse{background:#ff5252;color:#000}
 .suspend{background:var(--warn);color:#000}
 .ban{background:var(--danger);color:#fff}
+.delete{background:#000;color:#ff5252;border:1px solid #ff5252}
 .badges{display:flex;gap:12px;margin:10px 0}
 .badges img{
   width:48px;height:48px;border-radius:10px;
@@ -72,7 +74,7 @@ button{
 </div>
 
 <script>
-/* 🔥 FIREBASE CONFIG (IDENTIQUE AU SITE) */
+/* 🔥 FIREBASE CONFIG */
 firebase.initializeApp({
   apiKey: "AIzaSyCGuqE5sC6uRppfdsNXLSQEOjvm0doYOr4",
   authDomain: "guildwarsbattles2026.firebaseapp.com",
@@ -101,7 +103,6 @@ auth.onAuthStateChanged(async user=>{
     return;
   }
 
-  // OK ADMIN
   loadEvents();
   loadGuilds();
   loadUsers();
@@ -153,7 +154,7 @@ async function loadGuilds(){
     card.innerHTML = `
       <div class="inline">
         ${g.badge?`<img src="${g.badge}" width="32">`:``}
-        <b>${g.name}</b>
+        <b>${g.name}</b> — <i>${g.status || "pending"}</i>
       </div>
 
       Niveau :
@@ -170,8 +171,8 @@ async function loadGuilds(){
       </div>
 
       <button class="approve">Approuver</button>
-      <button class="suspend">Suspendre</button>
-      <button class="ban">Bannir</button>
+      <button class="refuse">Refuser</button>
+      <button class="delete">Supprimer</button>
     `;
 
     card.querySelectorAll("img[data-b]").forEach(img=>{
@@ -182,19 +183,31 @@ async function loadGuilds(){
       };
     });
 
-    card.querySelector(".approve").onclick = ()=>{
-      db.collection("guilds").doc(doc.id).update({
+    /* APPROUVER */
+    card.querySelector(".approve").onclick = async ()=>{
+      await db.collection("guilds").doc(doc.id).update({
         status:"approved",
         level:+document.getElementById(`lvl_${doc.id}`).value,
         badge:selectedBadge
       });
+      loadGuilds();
     };
 
-    ["suspend","ban"].forEach(type=>{
-      card.querySelector("."+type).onclick = ()=>{
-        db.collection("guilds").doc(doc.id).update({status:type});
-      };
-    });
+    /* REFUSER */
+    card.querySelector(".refuse").onclick = async ()=>{
+      if(!confirm("Refuser cette guilde ?")) return;
+      await db.collection("guilds").doc(doc.id).update({
+        status:"refused"
+      });
+      loadGuilds();
+    };
+
+    /* SUPPRIMER */
+    card.querySelector(".delete").onclick = async ()=>{
+      if(!confirm("⚠️ SUPPRIMER DÉFINITIVEMENT cette guilde ?")) return;
+      await db.collection("guilds").doc(doc.id).delete();
+      loadGuilds();
+    };
 
     guildList.appendChild(card);
   });

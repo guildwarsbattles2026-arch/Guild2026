@@ -87,7 +87,7 @@ button:hover{
   <div class="info"><b>Rôle :</b> <span id="profileRole"></span></div>
   <div class="info"><b>Dernière connexion :</b> <span id="lastLogin"></span></div>
 
-  <button id="requestGuildBtn">Demander création de guilde</button>
+  <button id="guildActionBtn">Demander création de guilde</button>
   <button id="logoutBtn">Se déconnecter</button>
 </div>
 
@@ -146,6 +146,18 @@ onAuthStateChanged(auth, async user=>{
   lastLogin.textContent = data.lastLogin
     ? new Date(data.lastLogin.seconds*1000).toLocaleString()
     : "Inconnu";
+
+  /* ===== GESTION GUILDE ===== */
+  const userGuildId = data.guildId || null;
+  const guildBtn = document.getElementById("guildActionBtn");
+
+  if(userGuildId){
+    guildBtn.textContent = "Aller vers ma guilde 🏰";
+    guildBtn.onclick = ()=> location.href="guildProfile.html";
+  }else{
+    guildBtn.textContent = "Demander création de guilde";
+    guildBtn.onclick = ()=> location.href="guildes.html";
+  }
 });
 
 /* ===== BOUTON ADMIN 🎭 ===== */
@@ -169,9 +181,7 @@ adminBtn.onclick = async ()=>{
   }
 };
 
-/* ===== AUTRES ACTIONS ===== */
-requestGuildBtn.onclick = ()=> location.href="demande-guilde.html";
-
+/* ===== LOGOUT ===== */
 logoutBtn.onclick = async ()=>{
   await signOut(auth);
   location.href="index.html";

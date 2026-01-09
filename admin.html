@@ -22,15 +22,20 @@ header{padding:20px;text-align:center;font-size:22px;font-weight:700;background:
 .container{max-width:1100px;margin:30px auto;padding:20px}
 .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;margin-bottom:25px}
 .section-title{font-size:20px;margin:25px 0 15px;opacity:.85}
-select,button{padding:8px;border-radius:8px}
-button{font-weight:600;cursor:pointer;margin-right:6px}
-.approve{background:#4caf50;color:#000}
-.refuse{background:#ff9800;color:#000}
-.delete{background:#b00020;color:#fff}
-.badge-box{display:flex;align-items:center;gap:12px;margin:10px 0}
-.badge-box img{width:48px;border-radius:10px}
-.inline{display:flex;align-items:center;gap:10px}
-ul{margin:5px 0 10px 20px}
+input,textarea,select{
+  width:100%;margin:6px 0;padding:10px;
+  background:#000;color:var(--text);
+  border:1px solid var(--border);border-radius:8px
+}
+button{
+  padding:10px 16px;border:none;border-radius:10px;
+  font-weight:600;cursor:pointer;margin-right:6px
+}
+.approve{background:var(--success);color:#000}
+.refuse{background:var(--warn);color:#000}
+.delete{background:var(--danger);color:#fff}
+.inline{display:flex;gap:10px;align-items:center}
+img{max-width:100%}
 </style>
 </head>
 
@@ -40,6 +45,24 @@ ul{margin:5px 0 10px 20px}
 
 <div class="container">
 
+<!-- ================= EVENTS ================= -->
+<div class="card">
+  <div class="section-title">Créer un événement</div>
+
+  <input id="eventTitle" placeholder="Nom de l'événement">
+  <input type="date" id="eventDate">
+  <textarea id="eventDesc" placeholder="Description"></textarea>
+
+  <input type="file" id="eventImage" accept="image/*">
+  <img id="eventPreview" style="display:none;margin-top:10px;border-radius:12px">
+
+  <button class="approve" id="createEvent">Ajouter l'événement</button>
+</div>
+
+<div class="section-title">Événements</div>
+<div id="eventList"></div>
+
+<!-- ================= GUILDES ================= -->
 <div class="section-title">Gestion des guildes</div>
 <div id="guildList"></div>
 
@@ -53,21 +76,84 @@ firebase.initializeApp({
   projectId: "guildwarsbattles2026"
 });
 
-const db = firebase.firestore();
 const auth = firebase.auth();
+const db = firebase.firestore();
 
 /* 🔐 ADMIN CHECK */
 auth.onAuthStateChanged(async user=>{
   if(!user) return location.href="index.html";
 
-  const u = await db.collection("users").doc(user.uid).get();
-  if(!u.exists || u.data().role !== "admin"){
-    alert("Accès refusé");
+  const snap = await db.collection("users").doc(user.uid).get();
+  if(!snap.exists || snap.data().role !== "admin"){
+    alert("⛔ Accès refusé");
     return location.href="live.html";
   }
 
+  loadEvents();
   loadGuilds();
 });
+
+/* ================= EVENTS ================= */
+let eventImageBase64 = "";
+
+eventImage.onchange = e=>{
+  const f = e.target.files[0];
+  if(!f) return;
+  const r = new FileReader();
+  r.onload = ()=>{
+    eventImageBase64 = r.result;
+    eventPreview.src = eventImageBase64;
+    eventPreview.style.display = "block";
+  };
+  r.readAsDataURL(f);
+};
+
+createEvent.onclick = async ()=>{
+  if(!eventTitle.value || !eventDate.value){
+    alert("Titre et date obligatoires");
+    return;
+  }
+
+  await db.collection("events").add({
+    title: eventTitle.value,
+    date: eventDate.value,
+    description: eventDesc.value,
+    image: eventImageBase64 || "",
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+
+  eventTitle.value="";
+  eventDate.value="";
+  eventDesc.value="";
+  eventImageBase64="";
+  eventPreview.style.display="none";
+
+  loadEvents();
+};
+
+async function loadEvents(){
+  eventList.innerHTML="";
+  const snap = await db.collection("events").orderBy("createdAt","desc").get();
+
+  snap.forEach(doc=>{
+    const e = doc.data();
+    eventList.innerHTML += `
+      <div class="card">
+        <b>${e.title}</b><br>
+        📅 ${e.date}<br>
+        <small>${e.description || ""}</small><br><br>
+        ${e.image ? `<img src="${e.image}" style="border-radius:12px;margin-bottom:10px">` : ""}
+        <button class="delete" onclick="deleteEvent('${doc.id}')">Supprimer</button>
+      </div>
+    `;
+  });
+}
+
+async function deleteEvent(id){
+  if(!confirm("Supprimer cet événement ?")) return;
+  await db.collection("events").doc(id).delete();
+  loadEvents();
+}
 
 /* ================= GUILDES ================= */
 async function loadGuilds(){
@@ -79,10 +165,9 @@ async function loadGuilds(){
 
     const card = document.createElement("div");
     card.className="card";
-
     card.innerHTML = `
       <div class="inline">
-        <img src="${g.logo}" width="48" style="border-radius:10px">
+        <img src="${g.logo}" width="60" style="border-radius:10px">
         <div>
           <b>${g.name}</b><br>
           Statut : <b>${g.status}</b>
@@ -90,63 +175,53 @@ async function loadGuilds(){
       </div>
 
       <br>
+      <b>Chef :</b> ${g.leaderName}<br>
+      <b>UID Chef :</b> ${g.leaderUID}<br>
+      <b>Email :</b> ${g.ownerEmail}<br>
+      <b>Membres :</b> ${g.membersCount}
 
-      <div><b>Chef :</b> ${g.leaderName}</div>
-      <div><b>UID Chef :</b> ${g.leaderUID}</div>
-      <div><b>Email :</b> ${g.ownerEmail}</div>
-      <div><b>Membres :</b> ${g.membersCount}</div>
-
-      <br>
-      <b>Joueurs :</b>
       <ul>
         ${g.members.map(m=>`<li>${m.name} — UID ${m.uid}</li>`).join("")}
       </ul>
 
-      <br>
-
       Niveau :
       <select id="lvl_${doc.id}">
-        ${[1,2,3,4,5].map(l=>`
-          <option ${g.level==l?"selected":""}>${l}</option>
-        `).join("")}
+        ${[1,2,3,4,5].map(l=>`<option ${g.level==l?"selected":""}>${l}</option>`).join("")}
       </select>
 
       <br><br>
 
-      <div class="badge-box">
-        <img src="badges/badge_v.png">
-        Donner le badge V ?
+      <div class="inline">
+        <img src="badges/badge_v.png" width="48">
+        Badge V :
         <select id="badge_${doc.id}">
           <option value="no">NON</option>
           <option value="yes" ${g.badge?"selected":""}>OUI</option>
         </select>
       </div>
 
+      <br>
+
       <button class="approve">Approuver</button>
       <button class="refuse">Refuser</button>
       <button class="delete">Supprimer</button>
     `;
 
-    /* APPROUVER */
     card.querySelector(".approve").onclick = async ()=>{
       const giveBadge = document.getElementById("badge_"+doc.id).value==="yes";
-
       await db.collection("guilds").doc(doc.id).update({
         status:"approved",
         level:+document.getElementById("lvl_"+doc.id).value,
         badge: giveBadge ? "badges/badge_v.png" : firebase.firestore.FieldValue.delete()
       });
-
       loadGuilds();
     };
 
-    /* REFUSER */
     card.querySelector(".refuse").onclick = async ()=>{
       await db.collection("guilds").doc(doc.id).update({status:"refused"});
       loadGuilds();
     };
 
-    /* SUPPRIMER */
     card.querySelector(".delete").onclick = async ()=>{
       if(!confirm("Supprimer définitivement cette guilde ?")) return;
       await db.collection("guilds").doc(doc.id).delete();

@@ -164,6 +164,7 @@ submitGuild.onclick=async()=>{
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
 
+    // ✅ Redirection simple vers guildStatus.html
     location.href="guildStatus.html";
 
   }catch(err){

@@ -39,7 +39,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
 <header>FF GuildwarsBattles2026 — Création de guilde</header>
 
 <div class="container">
-<div class="card">
+<div class="card" id="formCard">
 
   <p class="note">⚠️ Une seule demande autorisée par compte</p>
 
@@ -59,6 +59,8 @@ button:disabled{opacity:.5;cursor:not-allowed}
 </div>
 
 <script>
+document.addEventListener("DOMContentLoaded",()=>{
+
 firebase.initializeApp({
   apiKey: "AIzaSyCGuqE5sC6uRppfdsNXLSQEOjvm0doYOr4",
   authDomain: "guildwarsbattles2026.firebaseapp.com",
@@ -68,8 +70,17 @@ firebase.initializeApp({
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-let currentUser=null;
-let alreadySubmitted=false;
+const guildLogo = document.getElementById("guildLogo");
+const logoPreview = document.getElementById("logoPreview");
+const addPlayerBtn = document.getElementById("addPlayerBtn");
+const submitGuild = document.getElementById("submitGuild");
+const playersContainer = document.getElementById("playersContainer");
+const formCard = document.getElementById("formCard");
+
+let currentUser = null;
+let alreadySubmitted = false;
+let playerCount = 0;
+let guildLogoBase64 = "";
 
 /* 🔐 AUTH + VERIF */
 auth.onAuthStateChanged(async user=>{
@@ -78,39 +89,43 @@ auth.onAuthStateChanged(async user=>{
     return;
   }
 
-  currentUser=user;
+  currentUser = user;
 
-  const snap = await db.collection("guilds")
-    .where("createdBy","==",user.uid)
-    .limit(1)
-    .get();
+  try{
+    const snap = await db.collection("guilds")
+      .where("createdBy","==",user.uid)
+      .limit(1)
+      .get();
 
-  if(!snap.empty){
-    alreadySubmitted=true;
-    location.href="guildStatus.html";
+    if(!snap.empty){
+      alreadySubmitted = true;
+      // Bloquer le formulaire avant affichage
+      formCard.style.display = "none";
+      location.href="guildStatus.html";
+    }
+  }catch(err){
+    console.error("Erreur vérification Firestore:", err);
   }
 });
 
 /* LOGO */
-let guildLogoBase64="";
-guildLogo.onchange=e=>{
-  const f=e.target.files[0];
+guildLogo.onchange = e=>{
+  const f = e.target.files[0];
   if(!f) return;
-  const r=new FileReader();
-  r.onload=()=>{
-    guildLogoBase64=r.result;
-    logoPreview.src=guildLogoBase64;
-    logoPreview.style.display="block";
+  const r = new FileReader();
+  r.onload = ()=>{
+    guildLogoBase64 = r.result;
+    logoPreview.src = guildLogoBase64;
+    logoPreview.style.display = "block";
   };
   r.readAsDataURL(f);
 };
 
 /* JOUEURS */
-let playerCount=0;
-addPlayerBtn.onclick=()=>{
-  if(playerCount>=4) return alert("Maximum 4 joueurs");
+addPlayerBtn.onclick = ()=>{
+  if(playerCount >=4) return alert("Maximum 4 joueurs");
   playerCount++;
-  playersContainer.innerHTML+=`
+  playersContainer.innerHTML += `
     <div class="player-box">
       <input id="pn${playerCount}" placeholder="Nom joueur ${playerCount}">
       <input id="pu${playerCount}" placeholder="UID joueur ${playerCount}">
@@ -118,7 +133,7 @@ addPlayerBtn.onclick=()=>{
 };
 
 /* ENVOI */
-submitGuild.onclick=async()=>{
+submitGuild.onclick = async ()=>{
   if(alreadySubmitted){
     alert("Demande déjà envoyée");
     return;
@@ -136,8 +151,8 @@ submitGuild.onclick=async()=>{
 
   const players=[];
   for(let i=1;i<=playerCount;i++){
-    const n=document.getElementById("pn"+i).value.trim();
-    const u=document.getElementById("pu"+i).value.trim();
+    const n = document.getElementById("pn"+i).value.trim();
+    const u = document.getElementById("pu"+i).value.trim();
     if(!n||!u){
       alert("Infos joueur manquantes");
       return;
@@ -145,27 +160,24 @@ submitGuild.onclick=async()=>{
     players.push({name:n,uid:u,level:50});
   }
 
-  submitGuild.disabled=true;
+  submitGuild.disabled = true;
 
   try{
     await db.collection("guilds").add({
       createdBy: currentUser.uid,
       ownerEmail: currentUser.email,
-
       name: guildName.value,
       leaderName: leaderName.value,
       leaderUID: leaderUID.value,
       logo: guildLogoBase64,
-
       members: players,
       membersCount: players.length,
-
-      status:"pending",
+      status: "pending",
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
 
-    // ✅ Redirection simple vers guildStatus.html
-    location.href="guildStatus.html";
+    alreadySubmitted = true;
+    location.href = "guildStatus.html";
 
   }catch(err){
     console.error(err);
@@ -173,6 +185,8 @@ submitGuild.onclick=async()=>{
     submitGuild.disabled=false;
   }
 };
+
+});
 </script>
 
 </body>

@@ -20,34 +20,34 @@
 body{margin:0;background:var(--bg);color:var(--text)}
 header{padding:20px;text-align:center;font-size:22px;font-weight:700;background:#000;border-bottom:1px solid var(--border)}
 .container{max-width:1000px;margin:30px auto;padding:20px}
-.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;margin-bottom:20px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px}
 input,textarea,select,button{
   width:100%;margin:6px 0;padding:10px;
   border-radius:8px;border:1px solid var(--border);
   background:#000;color:var(--text)
 }
 button{cursor:pointer;font-weight:600;border:none;background:var(--accent);color:#000}
+button:disabled{opacity:.5;cursor:not-allowed}
 .preview{display:none;margin-top:10px;max-width:150px;border-radius:10px}
-.section-title{font-size:20px;margin-bottom:10px;opacity:.85}
-.note{font-size:14px;color:var(--warn);margin:5px 0}
-.player-box{margin-bottom:10px;padding:10px;border:1px solid var(--border);border-radius:10px;background:#111}
+.section-title{font-size:20px;margin-bottom:10px}
+.note{font-size:14px;color:var(--warn)}
+.player-box{margin-bottom:10px;padding:10px;border:1px solid var(--border);border-radius:10px}
 </style>
 </head>
 
 <body>
 
-<header id="headerText">FF GuildwarsBattles2026 — Création de guilde</header>
+<header>FF GuildwarsBattles2026 — Création de guilde</header>
 
 <div class="container">
-
 <div class="card" id="guildForm">
+
   <div class="section-title">Créer votre guilde</div>
+  <p class="note">⚠️ Une seule demande autorisée par compte</p>
 
-  <p class="note">⚠️ Niveau minimum des joueurs : 50</p>
-
-  <input type="text" id="guildName" placeholder="Nom de la guilde">
-  <input type="text" id="leaderName" placeholder="Nom du chef">
-  <input type="text" id="leaderUID" placeholder="UID du chef">
+  <input id="guildName" placeholder="Nom de la guilde">
+  <input id="leaderName" placeholder="Nom du chef">
+  <input id="leaderUID" placeholder="UID du chef">
 
   <input type="file" id="guildLogo" accept="image/*">
   <img id="logoPreview" class="preview">
@@ -56,12 +56,11 @@ button{cursor:pointer;font-weight:600;border:none;background:var(--accent);color
   <button id="addPlayerBtn">Ajouter un joueur (Max 4)</button>
 
   <button id="submitGuild">Envoyer la demande</button>
-</div>
 
+</div>
 </div>
 
 <script>
-/* 🔥 FIREBASE */
 firebase.initializeApp({
   apiKey: "AIzaSyCGuqE5sC6uRppfdsNXLSQEOjvm0doYOr4",
   authDomain: "guildwarsbattles2026.firebaseapp.com",
@@ -71,23 +70,25 @@ firebase.initializeApp({
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-let currentUser = null;
+let currentUser=null;
+let alreadySubmitted=false;
 
-/* 🔐 Connexion obligatoire + vérif demande existante */
+/* 🔐 AUTH + VERIF UNIQUE */
 auth.onAuthStateChanged(async user=>{
   if(!user){
     location.href="index.html";
     return;
   }
 
-  currentUser = user;
+  currentUser=user;
 
   const snap = await db.collection("guilds")
-    .where("ownerUid","==",user.uid)
+    .where("createdBy","==",user.uid)
     .limit(1)
     .get();
 
   if(!snap.empty){
+    alreadySubmitted=true;
     location.href="guildStatus.html";
   }
 });
@@ -109,7 +110,7 @@ guildLogo.onchange=e=>{
 /* JOUEURS */
 let playerCount=0;
 addPlayerBtn.onclick=()=>{
-  if(playerCount>=4)return alert("Maximum 4 joueurs");
+  if(playerCount>=4) return alert("Max 4 joueurs");
   playerCount++;
   playersContainer.innerHTML+=`
     <div class="player-box">
@@ -118,40 +119,44 @@ addPlayerBtn.onclick=()=>{
     </div>`;
 };
 
-/* SOUMISSION */
+/* ENVOI */
 submitGuild.onclick=async()=>{
-  if(!guildName.value||!leaderName.value||!leaderUID.value){
-    alert("Champs obligatoires"); return;
+  if(alreadySubmitted){
+    alert("Vous avez déjà envoyé une demande");
+    return;
   }
-  if(!guildLogoBase64){alert("Logo obligatoire"); return;}
-  if(playerCount===0){alert("Ajoutez au moins un joueur"); return;}
+
+  submitGuild.disabled=true;
+
+  if(!guildName.value||!leaderName.value||!leaderUID.value||!guildLogoBase64||playerCount===0){
+    alert("Champs incomplets");
+    submitGuild.disabled=false;
+    return;
+  }
 
   const players=[];
   for(let i=1;i<=playerCount;i++){
-    const n=document.getElementById("pn"+i).value.trim();
-    const u=document.getElementById("pu"+i).value.trim();
-    if(!n||!u){alert("Infos joueurs manquantes"); return;}
-    players.push({name:n,uid:u,level:50});
+    players.push({
+      name: document.getElementById("pn"+i).value,
+      uid: document.getElementById("pu"+i).value,
+      level:50
+    });
   }
 
   await db.collection("guilds").add({
-    /* 🔑 AJOUT IMPORTANT */
     createdBy: currentUser.uid,
-    createdByName: currentUser.displayName || currentUser.email,
-
-    /* EXISTANT (NON TOUCHÉ) */
-    ownerUid: currentUser.uid,
     ownerEmail: currentUser.email,
 
     name: guildName.value,
     leaderName: leaderName.value,
     leaderUID: leaderUID.value,
     logo: guildLogoBase64,
+
     members: players,
     membersCount: players.length,
 
-    status: "pending",
-    statusText: "En attente de validation",
+    status:"pending",
+    badgeV:false,
 
     createdAt: firebase.firestore.FieldValue.serverTimestamp()
   });

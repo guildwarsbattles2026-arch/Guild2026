@@ -21,7 +21,7 @@ body{margin:0;background:var(--bg);color:var(--text)}
 header{padding:20px;text-align:center;font-size:22px;font-weight:700;background:#000;border-bottom:1px solid var(--border)}
 .container{max-width:1000px;margin:30px auto;padding:20px}
 .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px}
-input,textarea,select,button{
+input,button{
   width:100%;margin:6px 0;padding:10px;
   border-radius:8px;border:1px solid var(--border);
   background:#000;color:var(--text)
@@ -29,7 +29,6 @@ input,textarea,select,button{
 button{cursor:pointer;font-weight:600;border:none;background:var(--accent);color:#000}
 button:disabled{opacity:.5;cursor:not-allowed}
 .preview{display:none;margin-top:10px;max-width:150px;border-radius:10px}
-.section-title{font-size:20px;margin-bottom:10px}
 .note{font-size:14px;color:var(--warn)}
 .player-box{margin-bottom:10px;padding:10px;border:1px solid var(--border);border-radius:10px}
 </style>
@@ -40,9 +39,8 @@ button:disabled{opacity:.5;cursor:not-allowed}
 <header>FF GuildwarsBattles2026 — Création de guilde</header>
 
 <div class="container">
-<div class="card" id="guildForm">
+<div class="card">
 
-  <div class="section-title">Créer votre guilde</div>
   <p class="note">⚠️ Une seule demande autorisée par compte</p>
 
   <input id="guildName" placeholder="Nom de la guilde">
@@ -53,9 +51,9 @@ button:disabled{opacity:.5;cursor:not-allowed}
   <img id="logoPreview" class="preview">
 
   <div id="playersContainer"></div>
-  <button id="addPlayerBtn">Ajouter un joueur (Max 4)</button>
 
-  <button id="submitGuild">Envoyer la demande</button>
+  <button type="button" id="addPlayerBtn">Ajouter un joueur (Max 4)</button>
+  <button type="button" id="submitGuild">Envoyer la demande</button>
 
 </div>
 </div>
@@ -73,7 +71,7 @@ const db = firebase.firestore();
 let currentUser=null;
 let alreadySubmitted=false;
 
-/* 🔐 AUTH + VERIF UNIQUE */
+/* 🔐 AUTH + VERIF */
 auth.onAuthStateChanged(async user=>{
   if(!user){
     location.href="index.html";
@@ -97,7 +95,7 @@ auth.onAuthStateChanged(async user=>{
 let guildLogoBase64="";
 guildLogo.onchange=e=>{
   const f=e.target.files[0];
-  if(!f)return;
+  if(!f) return;
   const r=new FileReader();
   r.onload=()=>{
     guildLogoBase64=r.result;
@@ -110,7 +108,7 @@ guildLogo.onchange=e=>{
 /* JOUEURS */
 let playerCount=0;
 addPlayerBtn.onclick=()=>{
-  if(playerCount>=4) return alert("Max 4 joueurs");
+  if(playerCount>=4) return alert("Maximum 4 joueurs");
   playerCount++;
   playersContainer.innerHTML+=`
     <div class="player-box">
@@ -122,46 +120,57 @@ addPlayerBtn.onclick=()=>{
 /* ENVOI */
 submitGuild.onclick=async()=>{
   if(alreadySubmitted){
-    alert("Vous avez déjà envoyé une demande");
+    alert("Demande déjà envoyée");
     return;
   }
 
-  submitGuild.disabled=true;
+  if(!guildName.value || !leaderName.value || !leaderUID.value || !guildLogoBase64){
+    alert("Champs obligatoires manquants");
+    return;
+  }
 
-  if(!guildName.value||!leaderName.value||!leaderUID.value||!guildLogoBase64||playerCount===0){
-    alert("Champs incomplets");
-    submitGuild.disabled=false;
+  if(playerCount === 0){
+    alert("Ajoutez au moins un joueur");
     return;
   }
 
   const players=[];
   for(let i=1;i<=playerCount;i++){
-    players.push({
-      name: document.getElementById("pn"+i).value,
-      uid: document.getElementById("pu"+i).value,
-      level:50
-    });
+    const n=document.getElementById("pn"+i).value.trim();
+    const u=document.getElementById("pu"+i).value.trim();
+    if(!n||!u){
+      alert("Infos joueur manquantes");
+      return;
+    }
+    players.push({name:n,uid:u,level:50});
   }
 
-  await db.collection("guilds").add({
-    createdBy: currentUser.uid,
-    ownerEmail: currentUser.email,
+  submitGuild.disabled=true;
 
-    name: guildName.value,
-    leaderName: leaderName.value,
-    leaderUID: leaderUID.value,
-    logo: guildLogoBase64,
+  try{
+    await db.collection("guilds").add({
+      createdBy: currentUser.uid,
+      ownerEmail: currentUser.email,
 
-    members: players,
-    membersCount: players.length,
+      name: guildName.value,
+      leaderName: leaderName.value,
+      leaderUID: leaderUID.value,
+      logo: guildLogoBase64,
 
-    status:"pending",
-    badgeV:false,
+      members: players,
+      membersCount: players.length,
 
-    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-  });
+      status:"pending",
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
 
-  location.href="guildStatus.html";
+    location.href="guildStatus.html";
+
+  }catch(err){
+    console.error(err);
+    alert("Erreur lors de l'envoi ❌");
+    submitGuild.disabled=false;
+  }
 };
 </script>
 

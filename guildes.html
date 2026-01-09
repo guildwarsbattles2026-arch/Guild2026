@@ -20,47 +20,48 @@
 body{margin:0;background:var(--bg);color:var(--text)}
 header{padding:20px;text-align:center;font-size:22px;font-weight:700;background:#000;border-bottom:1px solid var(--border)}
 .container{max-width:1000px;margin:30px auto;padding:20px}
-.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px}
-input,button{
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;margin-bottom:20px}
+input,textarea,select,button{
   width:100%;margin:6px 0;padding:10px;
   border-radius:8px;border:1px solid var(--border);
   background:#000;color:var(--text)
 }
 button{cursor:pointer;font-weight:600;border:none;background:var(--accent);color:#000}
-button:disabled{opacity:.5;cursor:not-allowed}
 .preview{display:none;margin-top:10px;max-width:150px;border-radius:10px}
-.note{font-size:14px;color:var(--warn)}
-.player-box{margin-bottom:10px;padding:10px;border:1px solid var(--border);border-radius:10px}
+.section-title{font-size:20px;margin-bottom:10px;opacity:.85}
+.note{font-size:14px;color:var(--warn);margin:5px 0}
+.player-box{margin-bottom:10px;padding:10px;border:1px solid var(--border);border-radius:10px;background:#111}
 </style>
 </head>
 
 <body>
 
-<header>FF GuildwarsBattles2026 — Création de guilde</header>
+<header id="headerText">FF GuildwarsBattles2026 — Création de guilde</header>
 
 <div class="container">
-<div class="card" id="formCard">
 
-  <p class="note">⚠️ Une seule demande autorisée par compte</p>
+<div class="card" id="guildForm">
+  <div class="section-title">Créer votre guilde</div>
 
-  <input id="guildName" placeholder="Nom de la guilde">
-  <input id="leaderName" placeholder="Nom du chef">
-  <input id="leaderUID" placeholder="UID du chef">
+  <p class="note">⚠️ Niveau minimum des joueurs : 50</p>
+
+  <input type="text" id="guildName" placeholder="Nom de la guilde">
+  <input type="text" id="leaderName" placeholder="Nom du chef">
+  <input type="text" id="leaderUID" placeholder="UID du chef">
 
   <input type="file" id="guildLogo" accept="image/*">
   <img id="logoPreview" class="preview">
 
   <div id="playersContainer"></div>
+  <button id="addPlayerBtn">Ajouter un joueur (Max 4)</button>
 
-  <button type="button" id="addPlayerBtn">Ajouter un joueur (Max 4)</button>
-  <button type="button" id="submitGuild">Envoyer la demande</button>
-
+  <button id="submitGuild">Envoyer la demande</button>
 </div>
+
 </div>
 
 <script>
-document.addEventListener("DOMContentLoaded",()=>{
-
+/* 🔥 FIREBASE */
 firebase.initializeApp({
   apiKey: "AIzaSyCGuqE5sC6uRppfdsNXLSQEOjvm0doYOr4",
   authDomain: "guildwarsbattles2026.firebaseapp.com",
@@ -70,19 +71,9 @@ firebase.initializeApp({
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-const guildLogo = document.getElementById("guildLogo");
-const logoPreview = document.getElementById("logoPreview");
-const addPlayerBtn = document.getElementById("addPlayerBtn");
-const submitGuild = document.getElementById("submitGuild");
-const playersContainer = document.getElementById("playersContainer");
-const formCard = document.getElementById("formCard");
-
 let currentUser = null;
-let alreadySubmitted = false;
-let playerCount = 0;
-let guildLogoBase64 = "";
 
-/* 🔐 AUTH + VERIF */
+/* 🔐 Connexion obligatoire + vérif demande existante */
 auth.onAuthStateChanged(async user=>{
   if(!user){
     location.href="index.html";
@@ -91,102 +82,73 @@ auth.onAuthStateChanged(async user=>{
 
   currentUser = user;
 
-  try{
-    const snap = await db.collection("guilds")
-      .where("createdBy","==",user.uid)
-      .limit(1)
-      .get();
+  const snap = await db.collection("guilds")
+    .where("ownerUid","==",user.uid)
+    .limit(1)
+    .get();
 
-    if(!snap.empty){
-      alreadySubmitted = true;
-      formCard.style.display = "none";
-      location.href="guildStatus.html"; // Même logique pour les anciens déjà soumis
-    }
-  }catch(err){
-    console.error("Erreur vérification Firestore:", err);
+  if(!snap.empty){
+    location.href="guildStatus.html";
   }
 });
 
 /* LOGO */
-guildLogo.onchange = e=>{
-  const f = e.target.files[0];
-  if(!f) return;
-  const r = new FileReader();
-  r.onload = ()=>{
-    guildLogoBase64 = r.result;
-    logoPreview.src = guildLogoBase64;
-    logoPreview.style.display = "block";
+let guildLogoBase64="";
+guildLogo.onchange=e=>{
+  const f=e.target.files[0];
+  if(!f)return;
+  const r=new FileReader();
+  r.onload=()=>{
+    guildLogoBase64=r.result;
+    logoPreview.src=guildLogoBase64;
+    logoPreview.style.display="block";
   };
   r.readAsDataURL(f);
 };
 
 /* JOUEURS */
-addPlayerBtn.onclick = ()=>{
-  if(playerCount >=4) return alert("Maximum 4 joueurs");
+let playerCount=0;
+addPlayerBtn.onclick=()=>{
+  if(playerCount>=4)return alert("Maximum 4 joueurs");
   playerCount++;
-  playersContainer.innerHTML += `
+  playersContainer.innerHTML+=`
     <div class="player-box">
       <input id="pn${playerCount}" placeholder="Nom joueur ${playerCount}">
       <input id="pu${playerCount}" placeholder="UID joueur ${playerCount}">
     </div>`;
 };
 
-/* ENVOI */
-submitGuild.onclick = async ()=>{
-  if(alreadySubmitted){
-    alert("Demande déjà envoyée");
-    return;
+/* SOUMISSION */
+submitGuild.onclick=async()=>{
+  if(!guildName.value||!leaderName.value||!leaderUID.value){
+    alert("Champs obligatoires"); return;
   }
-
-  if(!guildName.value || !leaderName.value || !leaderUID.value || !guildLogoBase64){
-    alert("Champs obligatoires manquants");
-    return;
-  }
-
-  if(playerCount === 0){
-    alert("Ajoutez au moins un joueur");
-    return;
-  }
+  if(!guildLogoBase64){alert("Logo obligatoire"); return;}
+  if(playerCount===0){alert("Ajoutez au moins un joueur"); return;}
 
   const players=[];
   for(let i=1;i<=playerCount;i++){
-    const n = document.getElementById("pn"+i).value.trim();
-    const u = document.getElementById("pu"+i).value.trim();
-    if(!n||!u){
-      alert("Infos joueur manquantes");
-      return;
-    }
+    const n=document.getElementById("pn"+i).value.trim();
+    const u=document.getElementById("pu"+i).value.trim();
+    if(!n||!u){alert("Infos joueurs manquantes"); return;}
     players.push({name:n,uid:u,level:50});
   }
 
-  submitGuild.disabled = true;
+  await db.collection("guilds").add({
+    ownerUid: currentUser.uid,
+    ownerEmail: currentUser.email,
+    name: guildName.value,
+    leaderName: leaderName.value,
+    leaderUID: leaderUID.value,
+    logo: guildLogoBase64,
+    members: players,
+    membersCount: players.length,
+    status: "pending",
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
 
-  try{
-    await db.collection("guilds").add({
-      createdBy: currentUser.uid,
-      ownerEmail: currentUser.email,
-      name: guildName.value,
-      leaderName: leaderName.value,
-      leaderUID: leaderUID.value,
-      logo: guildLogoBase64,
-      members: players,
-      membersCount: players.length,
-      status: "pending",
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-
-    alreadySubmitted = true;
-    // 🔑 Redirection vers admin.html après envoi
-    location.href = "admin.html";
-
-  }catch(err){
-    console.error(err);
-    alert("Erreur lors de l'envoi ❌");
-    submitGuild.disabled=false;
-  }
+  location.href="guildStatus.html";
 };
-
-});
 </script>
 
 </body>

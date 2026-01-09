@@ -135,15 +135,24 @@ submitGuild.onclick=async()=>{
   }
 
   await db.collection("guilds").add({
+    /* 🔑 AJOUT IMPORTANT */
+    createdBy: currentUser.uid,
+    createdByName: currentUser.displayName || currentUser.email,
+
+    /* EXISTANT (NON TOUCHÉ) */
     ownerUid: currentUser.uid,
     ownerEmail: currentUser.email,
+
     name: guildName.value,
     leaderName: leaderName.value,
     leaderUID: leaderUID.value,
     logo: guildLogoBase64,
     members: players,
     membersCount: players.length,
+
     status: "pending",
+    statusText: "En attente de validation",
+
     createdAt: firebase.firestore.FieldValue.serverTimestamp()
   });
 

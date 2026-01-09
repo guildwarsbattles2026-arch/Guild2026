@@ -99,9 +99,8 @@ auth.onAuthStateChanged(async user=>{
 
     if(!snap.empty){
       alreadySubmitted = true;
-      // Bloquer le formulaire avant affichage
       formCard.style.display = "none";
-      location.href="guildStatus.html";
+      location.href="guildStatus.html"; // Même logique pour les anciens déjà soumis
     }
   }catch(err){
     console.error("Erreur vérification Firestore:", err);
@@ -177,7 +176,8 @@ submitGuild.onclick = async ()=>{
     });
 
     alreadySubmitted = true;
-    location.href = "guildStatus.html";
+    // 🔑 Redirection vers admin.html après envoi
+    location.href = "admin.html";
 
   }catch(err){
     console.error(err);

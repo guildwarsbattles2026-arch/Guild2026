@@ -2,153 +2,185 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
+<title>FF GuildwarsBattles2026 | Demande de Guilde</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FF GuildwarsBattles2026 | Création de guilde</title>
-
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
 <style>
-:root{
-  --bg:#0a0a0a; --card:#1a1a1a; --border:#2e2e2e;
-  --text:#e6e6e6; --accent:#9e9e9e;
-  --warn:#ff9800;
-  --font:'Segoe UI', system-ui;
+body{
+  background:#0b0b0b;
+  color:#fff;
+  font-family:Arial, sans-serif;
+  padding:20px;
 }
-*{box-sizing:border-box;font-family:var(--font)}
-body{margin:0;background:var(--bg);color:var(--text)}
-header{padding:20px;text-align:center;font-size:22px;font-weight:700;background:#000;border-bottom:1px solid var(--border)}
-.container{max-width:1000px;margin:30px auto;padding:20px}
-.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;margin-bottom:20px}
-input,textarea,select,button{
-  width:100%;margin:6px 0;padding:10px;
-  border-radius:8px;border:1px solid var(--border);
-  background:#000;color:var(--text)
+h1{text-align:center;color:#ffcc00}
+form{
+  max-width:600px;
+  margin:auto;
+  background:#151515;
+  padding:20px;
+  border-radius:10px;
 }
-button{cursor:pointer;font-weight:600;border:none;background:var(--accent);color:#000}
-.preview{display:none;margin-top:10px;max-width:150px;border-radius:10px}
-.section-title{font-size:20px;margin-bottom:10px;opacity:.85}
-.note{font-size:14px;color:var(--warn);margin:5px 0}
-.player-box{margin-bottom:10px;padding:10px;border:1px solid var(--border);border-radius:10px;background:#111}
+label{display:block;margin-top:12px}
+input,button{
+  width:100%;
+  padding:10px;
+  margin-top:5px;
+  border-radius:5px;
+  border:none;
+}
+input{background:#222;color:#fff}
+button{
+  background:#ffcc00;
+  color:#000;
+  font-weight:bold;
+  margin-top:20px;
+  cursor:pointer;
+}
+button:disabled{
+  opacity:0.6;
+  cursor:not-allowed;
+}
+.player{
+  background:#1c1c1c;
+  padding:10px;
+  margin-top:10px;
+  border-radius:8px;
+}
+#logoPreview{
+  width:120px;
+  margin-top:10px;
+  display:none;
+  border-radius:8px;
+}
 </style>
 </head>
-
 <body>
 
-<header id="headerText">FF GuildwarsBattles2026 — Création de guilde</header>
+<h1>🏰 Création de Guilde</h1>
 
-<div class="container">
+<form id="guildForm">
+  <label>Nom de la guilde</label>
+  <input type="text" id="guildName" required>
 
-<div class="card" id="guildForm">
-  <div class="section-title">Créer votre guilde</div>
+  <label>Nom du chef</label>
+  <input type="text" id="leaderName" required>
 
-  <p class="note">⚠️ Niveau minimum des joueurs : 50</p>
+  <label>UID du chef</label>
+  <input type="text" id="leaderUID" required>
 
-  <input type="text" id="guildName" placeholder="Nom de la guilde">
-  <input type="text" id="leaderName" placeholder="Nom du chef">
-  <input type="text" id="leaderUID" placeholder="UID du chef">
+  <label>Logo de la guilde (obligatoire)</label>
+  <input type="file" id="logo" accept="image/*" required>
+  <img id="logoPreview">
 
-  <input type="file" id="guildLogo" accept="image/*">
-  <img id="logoPreview" class="preview">
+  <h3>👥 Joueurs (1 à 4)</h3>
+  <div id="players"></div>
 
-  <div id="playersContainer"></div>
-  <button id="addPlayerBtn">Ajouter un joueur (Max 4)</button>
+  <button type="button" onclick="addPlayer()">➕ Ajouter un joueur</button>
 
-  <button id="submitGuild">Envoyer la demande</button>
-</div>
+  <button id="submitBtn" type="submit">📨 Envoyer la demande</button>
+</form>
 
-</div>
+<!-- Firebase -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getFirestore, collection, addDoc, query, where, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-<script>
-/* 🔥 FIREBASE */
-firebase.initializeApp({
-  apiKey: "AIzaSyCGuqE5sC6uRppfdsNXLSQEOjvm0doYOr4",
-  authDomain: "guildwarsbattles2026.firebaseapp.com",
-  projectId: "guildwarsbattles2026"
-});
+const firebaseConfig = {
+  apiKey: "TA_CLE_API",
+  authDomain: "TON_DOMAINE",
+  projectId: "TON_PROJECT_ID",
+  storageBucket: "TON_BUCKET",
+  messagingSenderId: "TON_ID",
+  appId: "TON_APP_ID"
+};
 
-const auth = firebase.auth();
-const db = firebase.firestore();
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
 
-let currentUser = null;
+let userUID = null;
+let playerCount = 0;
 
-/* 🔐 Connexion obligatoire + vérif demande existante */
-auth.onAuthStateChanged(async user=>{
+onAuthStateChanged(auth, async (user)=>{
   if(!user){
-    location.href="index.html";
+    window.location.href="index.html";
     return;
   }
 
-  currentUser = user;
+  userUID = user.uid;
 
-  const snap = await db.collection("guilds")
-    .where("ownerUid","==",user.uid)
-    .limit(1)
-    .get();
-
+  // 🔍 Vérification demande existante
+  const q = query(
+    collection(db,"guildRequests"),
+    where("createdBy","==",user.uid)
+  );
+  const snap = await getDocs(q);
   if(!snap.empty){
-    location.href="guildStatus.html";
+    window.location.href="guildStatus.html";
   }
 });
 
-/* LOGO */
-let guildLogoBase64="";
-guildLogo.onchange=e=>{
-  const f=e.target.files[0];
-  if(!f)return;
-  const r=new FileReader();
-  r.onload=()=>{
-    guildLogoBase64=r.result;
-    logoPreview.src=guildLogoBase64;
-    logoPreview.style.display="block";
-  };
-  r.readAsDataURL(f);
-};
+// Logo preview
+document.getElementById("logo").addEventListener("change", e=>{
+  const file = e.target.files[0];
+  if(file){
+    const img = document.getElementById("logoPreview");
+    img.src = URL.createObjectURL(file);
+    img.style.display="block";
+  }
+});
 
-/* JOUEURS */
-let playerCount=0;
-addPlayerBtn.onclick=()=>{
-  if(playerCount>=4)return alert("Maximum 4 joueurs");
+// Ajouter joueur
+window.addPlayer = ()=>{
+  if(playerCount>=4) return alert("Maximum 4 joueurs");
   playerCount++;
-  playersContainer.innerHTML+=`
-    <div class="player-box">
-      <input id="pn${playerCount}" placeholder="Nom joueur ${playerCount}">
-      <input id="pu${playerCount}" placeholder="UID joueur ${playerCount}">
-    </div>`;
+
+  const div = document.createElement("div");
+  div.className="player";
+  div.innerHTML=`
+    <label>Nom joueur ${playerCount}</label>
+    <input required class="pname">
+    <label>UID joueur ${playerCount}</label>
+    <input required class="puid">
+    <label>Niveau joueur ${playerCount} (min 50)</label>
+    <input type="number" min="50" required class="plevel">
+  `;
+  document.getElementById("players").appendChild(div);
 };
 
-/* SOUMISSION */
-submitGuild.onclick=async()=>{
-  if(!guildName.value||!leaderName.value||!leaderUID.value){
-    alert("Champs obligatoires"); return;
-  }
-  if(!guildLogoBase64){alert("Logo obligatoire"); return;}
-  if(playerCount===0){alert("Ajoutez au moins un joueur"); return;}
+// Soumission
+document.getElementById("guildForm").addEventListener("submit", async e=>{
+  e.preventDefault();
+  const btn = document.getElementById("submitBtn");
+  btn.disabled = true;
 
-  const players=[];
-  for(let i=1;i<=playerCount;i++){
-    const n=document.getElementById("pn"+i).value.trim();
-    const u=document.getElementById("pu"+i).value.trim();
-    if(!n||!u){alert("Infos joueurs manquantes"); return;}
-    players.push({name:n,uid:u,level:50});
-  }
-
-  await db.collection("guilds").add({
-    ownerUid: currentUser.uid,
-    ownerEmail: currentUser.email,
-    name: guildName.value,
-    leaderName: leaderName.value,
-    leaderUID: leaderUID.value,
-    logo: guildLogoBase64,
-    members: players,
-    membersCount: players.length,
-    status: "pending",
-    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  const players = [];
+  document.querySelectorAll(".player").forEach(p=>{
+    const name = p.querySelector(".pname").value;
+    const uid = p.querySelector(".puid").value;
+    const level = Number(p.querySelector(".plevel").value);
+    if(level < 50) throw alert("Niveau minimum 50 requis");
+    players.push({name,uid,level});
   });
 
-  location.href="guildStatus.html";
-};
+  if(players.length < 1){
+    btn.disabled=false;
+    return alert("Ajoute au moins 1 joueur");
+  }
+
+  await addDoc(collection(db,"guildRequests"),{
+    guildName: guildName.value,
+    leaderName: leaderName.value,
+    leaderUID: leaderUID.value,
+    players,
+    createdBy: userUID,
+    status:"pending",
+    createdAt: serverTimestamp()
+  });
+
+  window.location.href="guildStatus.html";
+});
 </script>
 
 </body>

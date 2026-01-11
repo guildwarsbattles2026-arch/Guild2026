@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Profil Guilde | FF GuildwarsBattles2026</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+body{
+  margin:0;
+  font-family:'Poppins',sans-serif;
+  background:linear-gradient(135deg,#000,#2c2c2c);
+  color:#fff;
+}
+header{
+  background:rgba(0,0,0,0.7);
+  padding:20px;
+  text-align:center;
+  border-bottom:1px solid rgba(255,255,255,0.15);
+}
+header h1{
+  margin:0;
+  font-size:1.8rem;
+  background:linear-gradient(90deg,#fff,#aaa);
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+}
+.container{
+  max-width:700px;
+  margin:30px auto;
+  background:rgba(255,255,255,0.08);
+  border-radius:18px;
+  padding:25px;
+  box-shadow:0 0 25px rgba(0,170,255,0.25);
+  text-align:center;
+}
+.guild-logo{
+  width:150px;
+  height:150px;
+  border-radius:50%;
+  border:4px solid #00aaff;
+  margin:0 auto 15px;
+  object-fit:cover;
+}
+.guild-name{
+  font-size:1.6rem;
+  font-weight:bold;
+  margin-bottom:10px;
+  padding:8px 12px;
+  border:2px solid #ff0000;
+  display:inline-block;
+  border-radius:12px;
+  background:rgba(255,0,0,0.1);
+}
+.guild-level{
+  margin-bottom:15px;
+  font-size:1.1rem;
+  color:#00ffcc;
+}
+button{
+  padding:10px 14px;
+  border:none;
+  border-radius:12px;
+  font-weight:bold;
+  cursor:pointer;
+  margin:5px;
+}
+.addPlayerBtn{
+  background:#ff4d4d;
+  color:#fff;
+}
+.player-module{
+  background:rgba(255,0,0,0.2);
+  border:2px solid #ff0000;
+  border-radius:12px;
+  padding:10px;
+  margin-top:10px;
+  display:none;
+  text-align:left;
+}
+.player-module b{
+  color:#fff;
+}
+.player-card{
+  background:rgba(255,0,0,0.2);
+  border:2px solid #ff0000;
+  border-radius:12px;
+  padding:10px;
+  margin-top:10px;
+  text-align:left;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <h1>🏰 Profil de la Guilde</h1>
+</header>
+
+<div class="container">
+  <img id="guildLogo" class="guild-logo" src="" alt="Logo Guilde">
+  <div id="guildName" class="guild-name">Nom de la Guilde</div>
+  <div id="guildLevel" class="guild-level">Niveau : 0</div>
+  
+  <button class="addPlayerBtn" onclick="togglePlayerModule()">👤 Ajouter Joueur</button>
+
+  <div id="playerModule" class="player-module">
+    <label>Nom Joueur :</label>
+    <input id="playerName" placeholder="Nom du joueur">
+    <label>UID :</label>
+    <input id="playerUID" placeholder="UID du joueur">
+    <label>Niveau :</label>
+    <input type="number" id="playerLevel" min="50" placeholder="50">
+    <button onclick="addPlayer()">Ajouter</button>
+  </div>
+
+  <h3>Joueurs :</h3>
+  <div id="playersList"></div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getFirestore, doc, getDoc, updateDoc, arrayUnion, query, collection, where, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+/* 🔥 CONFIG FIREBASE */
+const firebaseConfig = {
+  apiKey: "AIzaSyCGuqE5sC6uRppfdsNXLSQEOjvm0doYOr4",
+  authDomain: "guildwarsbattles2026.firebaseapp.com",
+  projectId: "guildwarsbattles2026",
+  storageBucket: "guildwarsbattles2026.firebasestorage.app",
+  messagingSenderId: "116728335274",
+  appId: "1:116728335274:web:3a245ad4254caebeb779d3"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+
+let userUID;
+let currentGuildId;
+
+/* 🔐 AUTH CHECK + Récupère la guilde de l'utilisateur */
+onAuthStateChanged(auth, async user=>{
+  if(!user){
+    location.href="index.html";
+    return;
+  }
+
+  userUID = user.uid;
+
+  // Chercher la guilde créée par cet utilisateur
+  const q = query(collection(db,"guildRequests"), where("createdBy","==",userUID));
+  const snap = await getDocs(q);
+
+  if(snap.empty){
+    alert("Vous n'avez pas de guilde");
+    location.href="guildForm.html"; // Redirige vers création si pas de guilde
+    return;
+  }
+
+  const guildDoc = snap.docs[0]; // On prend la première guilde créée par l'utilisateur
+  currentGuildId = guildDoc.id;
+
+  loadGuild();
+});
+
+/* 🔐 LOAD GUILDE */
+async function loadGuild(){
+  const docRef = doc(db,"guildRequests",currentGuildId);
+  const snap = await getDoc(docRef);
+  if(!snap.exists()){
+    alert("Guilde non trouvée");
+    return;
+  }
+
+  const guild = snap.data();
+  document.getElementById("guildLogo").src = guild.logoURL || "";
+  document.getElementById("guildName").textContent = guild.guildName;
+  document.getElementById("guildLevel").textContent = "Niveau : "+(guild.level || 0);
+
+  // Joueurs
+  const list = document.getElementById("playersList");
+  list.innerHTML="";
+  if(guild.players){
+    guild.players.forEach(p=>{
+      const d = document.createElement("div");
+      d.className="player-card";
+      d.innerHTML=`<b>${p.name}</b> | UID: ${p.uid} | Niveau: ${p.level}`;
+      list.appendChild(d);
+    });
+  }
+}
+
+window.togglePlayerModule = ()=>{
+  const m = document.getElementById("playerModule");
+  m.style.display = m.style.display==="block" ? "none" : "block";
+}
+
+window.addPlayer = async ()=>{
+  const name = document.getElementById("playerName").value.trim();
+  const uid = document.getElementById("playerUID").value.trim();
+  const level = Number(document.getElementById("playerLevel").value);
+
+  if(!name || !uid || level<50) return alert("Tous les champs sont obligatoires et niveau >=50");
+
+  await updateDoc(doc(db,"guildRequests",currentGuildId),{
+    players: arrayUnion({name, uid, level})
+  });
+
+  document.getElementById("playerName").value="";
+  document.getElementById("playerUID").value="";
+  document.getElementById("playerLevel").value="";
+  document.getElementById("playerModule").style.display="none";
+
+  loadGuild();
+}
+</script>
+
+</body>
+</html>

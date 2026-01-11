@@ -51,21 +51,19 @@ header h1{
   border:2px solid #ff0000;
   display:inline-block;
   border-radius:12px;
-  background:rgba(255,0,0,0.08); /* rouge clair */
+  background:rgba(255,0,0,0.08);
+}
+.guild-badge{
+  width:28px;
+  height:28px;
+  margin-left:8px;
+  vertical-align:middle;
+  border-radius:50%;
 }
 .guild-level{
   margin-bottom:15px;
   font-size:1.1rem;
   color:#00ffcc;
-}
-.badge{
-  display:inline-block;
-  margin-left:10px;
-  padding:4px 8px;
-  border-radius:8px;
-  font-weight:bold;
-  background:rgba(255,215,0,0.5); /* jaune clair */
-  color:#000;
 }
 button{
   padding:10px 14px;
@@ -76,11 +74,17 @@ button{
   margin:5px;
 }
 .addPlayerBtn{
-  background:rgba(255,0,0,0.3); /* rouge clair */
+  background:rgba(255,0,0,0.3);
   color:#fff;
 }
+.changeLogoBtn{
+  background:#00aaff;
+  color:#000;
+  font-weight:bold;
+  margin-bottom:15px;
+}
 .player-module{
-  background:rgba(255,0,0,0.1); /* rouge très clair */
+  background:rgba(255,0,0,0.1);
   border:2px solid rgba(255,0,0,0.3);
   border-radius:12px;
   padding:10px;
@@ -99,6 +103,45 @@ button{
   margin-top:10px;
   text-align:left;
 }
+#logoPreview{
+  display:block;
+  margin:10px auto;
+  width:120px;
+  height:120px;
+  border-radius:50%;
+  object-fit:cover;
+  border:3px solid #00aaff;
+}
+.code-btn{
+  background:rgba(255,255,255,0.05);
+  color:#fff;
+  font-size:0.8rem;
+  border:1px dashed #fff;
+  margin-top:8px;
+  cursor:pointer;
+}
+.mini-card{
+  display:inline-block;
+  margin:5px;
+  padding:6px 10px;
+  border-radius:8px;
+  background:rgba(255,255,255,0.05);
+  font-size:0.75rem;
+  text-align:center;
+  color:#fff;
+  position:relative;
+}
+.mini-card .badge-mini{
+  width:16px;
+  height:16px;
+  vertical-align:middle;
+  margin-left:4px;
+}
+.mini-card span{
+  display:block;
+  opacity:0.7;
+  font-size:0.65rem;
+}
 </style>
 </head>
 
@@ -110,10 +153,17 @@ button{
 
 <div class="container">
   <img id="guildLogo" class="guild-logo" src="https://via.placeholder.com/150" alt="Logo Guilde">
-  <div id="guildName" class="guild-name">Nom de la Guilde</div>
-  <span id="guildBadge" class="badge" style="display:none">Badge V</span>
+  <div>
+    <span id="guildName" class="guild-name">Nom de la Guilde</span>
+    <img id="guildBadge" class="guild-badge" src="" alt="Badge Guilde" style="display:none">
+  </div>
+
   <div id="guildLevel" class="guild-level">Niveau : 0</div>
-  
+
+  <button class="changeLogoBtn" onclick="document.getElementById('logoInput').click()">📸 Changer Logo</button>
+  <input type="file" id="logoInput" accept="image/*" style="display:none">
+  <img id="logoPreview">
+
   <button class="addPlayerBtn" onclick="togglePlayerModule()">👤 Ajouter Joueur</button>
 
   <div id="playerModule" class="player-module">
@@ -123,6 +173,8 @@ button{
     <input id="playerUID" placeholder="UID du joueur">
     <label>Niveau :</label>
     <input type="number" id="playerLevel" min="50" placeholder="50">
+    <label>Code Badge (optionnel) :</label>
+    <input id="playerBadgeCode" placeholder="/badge2026xiq">
     <button onclick="addPlayer()">Ajouter</button>
   </div>
 
@@ -134,6 +186,7 @@ button{
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getFirestore, doc, getDoc, updateDoc, arrayUnion, query, collection, where, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 
 /* 🔥 CONFIG FIREBASE */
 const firebaseConfig = {
@@ -147,12 +200,12 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const storage = getStorage(app);
 const auth = getAuth(app);
 
 let userUID;
 let currentGuildId;
 
-/* 🔐 AUTH CHECK + Récupère la guilde de l'utilisateur */
 onAuthStateChanged(auth, async user=>{
   if(!user){
     location.href="index.html";
@@ -161,13 +214,12 @@ onAuthStateChanged(auth, async user=>{
 
   userUID = user.uid;
 
-  // Chercher la guilde approuvée de cet utilisateur
   const q = query(collection(db,"guildRequests"), where("createdBy","==",userUID));
   const snap = await getDocs(q);
 
   if(snap.empty){
     alert("Vous n'avez pas de guilde");
-    location.href="guildes.html"; // Redirige vers création si pas de guilde
+    location.href="guildes.html";
     return;
   }
 
@@ -177,7 +229,6 @@ onAuthStateChanged(auth, async user=>{
   loadGuild();
 });
 
-/* 🔐 LOAD GUILDE */
 async function loadGuild(){
   const docRef = doc(db,"guildRequests",currentGuildId);
   const snap = await getDoc(docRef);
@@ -188,32 +239,55 @@ async function loadGuild(){
 
   const guild = snap.data();
 
-  // Logo ou placeholder
   document.getElementById("guildLogo").src = guild.logoURL || "https://via.placeholder.com/150";
+  document.getElementById("logoPreview").src = guild.logoURL || "";
   document.getElementById("guildName").textContent = guild.guildName;
   document.getElementById("guildLevel").textContent = "Niveau : "+(guild.level || 0);
 
-  // Badge si admin a validé
   const badgeEl = document.getElementById("guildBadge");
-  if(guild.badgeV){
-    badgeEl.style.display="inline-block";
+  if(guild.badgeURL){
+    badgeEl.src = guild.badgeURL;
+    badgeEl.style.display = "inline-block";
   } else {
-    badgeEl.style.display="none";
+    badgeEl.style.display = "none";
   }
 
-  // Joueurs
   const list = document.getElementById("playersList");
   list.innerHTML="";
   if(guild.players){
     guild.players.forEach(p=>{
       const d = document.createElement("div");
-      d.className="player-card";
-      d.innerHTML=`<b>${p.name}</b> | UID: ${p.uid} | Niveau: ${p.level}`;
+      d.className="mini-card";
+
+      let badgeHTML = "";
+      if(p.badgeCode === "/badge2026xiq"){
+        badgeHTML = `<img class="badge-mini" src="badgeV.svg" alt="Badge">`; // tu peux mettre le chemin réel
+      }
+
+      d.innerHTML=`<b>${p.name}${badgeHTML}</b><span>UID: ${p.uid} | LVL: ${p.level}</span>`;
       list.appendChild(d);
     });
   }
 }
 
+/* Logo */
+document.getElementById("logoInput").onchange = async (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+
+  const storageRef = ref(storage, `guildLogos/${currentGuildId}`);
+  await uploadBytes(storageRef, file);
+  const url = await getDownloadURL(storageRef);
+
+  await updateDoc(doc(db,"guildRequests",currentGuildId),{
+    logoURL: url
+  });
+
+  document.getElementById("guildLogo").src = url;
+  document.getElementById("logoPreview").src = url;
+}
+
+/* Joueurs */
 window.togglePlayerModule = ()=>{
   const m = document.getElementById("playerModule");
   m.style.display = m.style.display==="block" ? "none" : "block";
@@ -223,16 +297,18 @@ window.addPlayer = async ()=>{
   const name = document.getElementById("playerName").value.trim();
   const uid = document.getElementById("playerUID").value.trim();
   const level = Number(document.getElementById("playerLevel").value);
+  const badgeCode = document.getElementById("playerBadgeCode").value.trim();
 
   if(!name || !uid || level<50) return alert("Tous les champs sont obligatoires et niveau >=50");
 
   await updateDoc(doc(db,"guildRequests",currentGuildId),{
-    players: arrayUnion({name, uid, level})
+    players: arrayUnion({name, uid, level, badgeCode})
   });
 
   document.getElementById("playerName").value="";
   document.getElementById("playerUID").value="";
   document.getElementById("playerLevel").value="";
+  document.getElementById("playerBadgeCode").value="";
   document.getElementById("playerModule").style.display="none";
 
   loadGuild();

@@ -2,185 +2,211 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>FF GuildwarsBattles2026 | Demande de Guilde</title>
+<title>Demande de Guilde | FF GuildwarsBattles2026</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
 body{
-  background:#0b0b0b;
+  margin:0;
+  font-family:'Poppins',sans-serif;
+  background:linear-gradient(135deg,#000,#2c2c2c);
   color:#fff;
-  font-family:Arial, sans-serif;
-  padding:20px;
 }
-h1{text-align:center;color:#ffcc00}
-form{
-  max-width:600px;
-  margin:auto;
-  background:#151515;
+header{
+  background:rgba(0,0,0,0.7);
   padding:20px;
-  border-radius:10px;
+  text-align:center;
+  border-bottom:1px solid rgba(255,255,255,0.15);
+}
+header h1{
+  margin:0;
+  font-size:1.8rem;
+  background:linear-gradient(90deg,#fff,#aaa);
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+}
+.container{
+  max-width:420px;
+  margin:40px auto;
+  background:rgba(255,255,255,0.08);
+  border-radius:18px;
+  padding:25px;
+  box-shadow:0 0 25px rgba(0,170,255,0.25);
 }
 label{display:block;margin-top:12px}
 input,button{
   width:100%;
-  padding:10px;
-  margin-top:5px;
-  border-radius:5px;
+  padding:14px;
   border:none;
+  border-radius:14px;
+  margin-top:6px;
 }
-input{background:#222;color:#fff}
+input{
+  background:rgba(0,0,0,0.6);
+  color:#fff;
+}
 button{
-  background:#ffcc00;
+  background:#00aaff;
   color:#000;
   font-weight:bold;
-  margin-top:20px;
   cursor:pointer;
+  margin-top:18px;
 }
-button:disabled{
-  opacity:0.6;
-  cursor:not-allowed;
-}
+button:disabled{opacity:0.6}
 .player{
-  background:#1c1c1c;
-  padding:10px;
-  margin-top:10px;
-  border-radius:8px;
+  margin-top:15px;
+  padding:12px;
+  background:rgba(255,255,255,0.08);
+  border-radius:14px;
 }
 #logoPreview{
   width:120px;
+  border-radius:14px;
   margin-top:10px;
   display:none;
-  border-radius:8px;
 }
 </style>
 </head>
+
 <body>
 
-<h1>🏰 Création de Guilde</h1>
+<header>
+  <h1>🏰 Demande de Guilde</h1>
+</header>
 
+<div class="container">
 <form id="guildForm">
-  <label>Nom de la guilde</label>
-  <input type="text" id="guildName" required>
 
-  <label>Nom du chef</label>
-  <input type="text" id="leaderName" required>
+<label>Nom de la guilde</label>
+<input id="guildName" required>
 
-  <label>UID du chef</label>
-  <input type="text" id="leaderUID" required>
+<label>Nom du chef</label>
+<input id="leaderName" required>
 
-  <label>Logo de la guilde (obligatoire)</label>
-  <input type="file" id="logo" accept="image/*" required>
-  <img id="logoPreview">
+<label>UID du chef</label>
+<input id="leaderUID" required readonly>
 
-  <h3>👥 Joueurs (1 à 4)</h3>
-  <div id="players"></div>
+<label>Logo de la guilde</label>
+<input type="file" id="logo" accept="image/*" required>
+<img id="logoPreview">
 
-  <button type="button" onclick="addPlayer()">➕ Ajouter un joueur</button>
+<h3>👥 Joueurs (1 à 4)</h3>
+<div id="players"></div>
 
-  <button id="submitBtn" type="submit">📨 Envoyer la demande</button>
+<button type="button" onclick="addPlayer()">➕ Ajouter joueur</button>
+<button id="submitBtn">📨 Envoyer la demande</button>
+
 </form>
+</div>
 
-<!-- Firebase -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-import { getFirestore, collection, addDoc, query, where, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import {
+  getFirestore, collection, addDoc,
+  query, where, getDocs, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
+/* 🔥 MÊME CONFIG QUE PROFIL */
 const firebaseConfig = {
-  apiKey: "TA_CLE_API",
-  authDomain: "TON_DOMAINE",
-  projectId: "TON_PROJECT_ID",
-  storageBucket: "TON_BUCKET",
-  messagingSenderId: "TON_ID",
-  appId: "TON_APP_ID"
+  apiKey: "AIzaSyCGuqE5sC6uRppfdsNXLSQEOjvm0doYOr4",
+  authDomain: "guildwarsbattles2026.firebaseapp.com",
+  projectId: "guildwarsbattles2026",
+  storageBucket: "guildwarsbattles2026.firebasestorage.app",
+  messagingSenderId: "116728335274",
+  appId: "1:116728335274:web:3a245ad4254caebeb779d3"
 };
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-let userUID = null;
+let userUID;
 let playerCount = 0;
 
-onAuthStateChanged(auth, async (user)=>{
+/* 🔐 AUTH + VÉRIF DEMANDE EXISTANTE */
+onAuthStateChanged(auth, async user=>{
   if(!user){
-    window.location.href="index.html";
+    location.href="index.html";
     return;
   }
 
   userUID = user.uid;
+  leaderUID.value = user.uid;
+  leaderName.value = user.displayName || "";
 
-  // 🔍 Vérification demande existante
   const q = query(
     collection(db,"guildRequests"),
     where("createdBy","==",user.uid)
   );
   const snap = await getDocs(q);
+
   if(!snap.empty){
-    window.location.href="guildStatus.html";
+    location.href="guildStatus.html";
   }
 });
 
-// Logo preview
-document.getElementById("logo").addEventListener("change", e=>{
-  const file = e.target.files[0];
-  if(file){
-    const img = document.getElementById("logoPreview");
-    img.src = URL.createObjectURL(file);
-    img.style.display="block";
+/* 👁️ PREVIEW LOGO */
+logo.onchange = e=>{
+  const f = e.target.files[0];
+  if(f){
+    logoPreview.src = URL.createObjectURL(f);
+    logoPreview.style.display="block";
   }
-});
+};
 
-// Ajouter joueur
+/* ➕ AJOUT JOUEUR */
 window.addPlayer = ()=>{
   if(playerCount>=4) return alert("Maximum 4 joueurs");
   playerCount++;
 
-  const div = document.createElement("div");
-  div.className="player";
-  div.innerHTML=`
+  const d = document.createElement("div");
+  d.className="player";
+  d.innerHTML=`
     <label>Nom joueur ${playerCount}</label>
-    <input required class="pname">
-    <label>UID joueur ${playerCount}</label>
-    <input required class="puid">
-    <label>Niveau joueur ${playerCount} (min 50)</label>
-    <input type="number" min="50" required class="plevel">
+    <input class="pname" required>
+    <label>UID joueur</label>
+    <input class="puid" required>
+    <label>Niveau (min 50)</label>
+    <input type="number" min="50" class="plevel" required>
   `;
-  document.getElementById("players").appendChild(div);
+  players.appendChild(d);
 };
 
-// Soumission
-document.getElementById("guildForm").addEventListener("submit", async e=>{
+/* 📤 ENVOI */
+guildForm.onsubmit = async e=>{
   e.preventDefault();
-  const btn = document.getElementById("submitBtn");
-  btn.disabled = true;
+  submitBtn.disabled = true;
 
-  const players = [];
+  const playersData = [];
   document.querySelectorAll(".player").forEach(p=>{
-    const name = p.querySelector(".pname").value;
-    const uid = p.querySelector(".puid").value;
     const level = Number(p.querySelector(".plevel").value);
-    if(level < 50) throw alert("Niveau minimum 50 requis");
-    players.push({name,uid,level});
+    if(level < 50) throw alert("Niveau minimum 50");
+    playersData.push({
+      name:p.querySelector(".pname").value,
+      uid:p.querySelector(".puid").value,
+      level
+    });
   });
 
-  if(players.length < 1){
-    btn.disabled=false;
+  if(playersData.length < 1){
+    submitBtn.disabled=false;
     return alert("Ajoute au moins 1 joueur");
   }
 
   await addDoc(collection(db,"guildRequests"),{
-    guildName: guildName.value,
-    leaderName: leaderName.value,
-    leaderUID: leaderUID.value,
-    players,
-    createdBy: userUID,
+    guildName:guildName.value,
+    leaderName:leaderName.value,
+    leaderUID:userUID,
+    players:playersData,
+    createdBy:userUID,
     status:"pending",
-    createdAt: serverTimestamp()
+    badgeV:false,
+    createdAt:serverTimestamp()
   });
 
-  window.location.href="guildStatus.html";
-});
+  location.href="guildStatus.html";
+};
 </script>
 
 </body>

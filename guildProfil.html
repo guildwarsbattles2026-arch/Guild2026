@@ -11,6 +11,7 @@ body{
   font-family:'Poppins',sans-serif;
   background:linear-gradient(135deg,#000,#2c2c2c);
   color:#fff;
+  text-align:center;
 }
 header{
   background:rgba(0,0,0,0.7);
@@ -50,12 +51,21 @@ header h1{
   border:2px solid #ff0000;
   display:inline-block;
   border-radius:12px;
-  background:rgba(255,0,0,0.1);
+  background:rgba(255,0,0,0.08); /* rouge clair */
 }
 .guild-level{
   margin-bottom:15px;
   font-size:1.1rem;
   color:#00ffcc;
+}
+.badge{
+  display:inline-block;
+  margin-left:10px;
+  padding:4px 8px;
+  border-radius:8px;
+  font-weight:bold;
+  background:rgba(255,215,0,0.5); /* jaune clair */
+  color:#000;
 }
 button{
   padding:10px 14px;
@@ -66,12 +76,12 @@ button{
   margin:5px;
 }
 .addPlayerBtn{
-  background:#ff4d4d;
+  background:rgba(255,0,0,0.3); /* rouge clair */
   color:#fff;
 }
 .player-module{
-  background:rgba(255,0,0,0.2);
-  border:2px solid #ff0000;
+  background:rgba(255,0,0,0.1); /* rouge très clair */
+  border:2px solid rgba(255,0,0,0.3);
   border-radius:12px;
   padding:10px;
   margin-top:10px;
@@ -82,8 +92,8 @@ button{
   color:#fff;
 }
 .player-card{
-  background:rgba(255,0,0,0.2);
-  border:2px solid #ff0000;
+  background:rgba(255,0,0,0.1);
+  border:2px solid rgba(255,0,0,0.3);
   border-radius:12px;
   padding:10px;
   margin-top:10px;
@@ -99,8 +109,9 @@ button{
 </header>
 
 <div class="container">
-  <img id="guildLogo" class="guild-logo" src="" alt="Logo Guilde">
+  <img id="guildLogo" class="guild-logo" src="https://via.placeholder.com/150" alt="Logo Guilde">
   <div id="guildName" class="guild-name">Nom de la Guilde</div>
+  <span id="guildBadge" class="badge" style="display:none">Badge V</span>
   <div id="guildLevel" class="guild-level">Niveau : 0</div>
   
   <button class="addPlayerBtn" onclick="togglePlayerModule()">👤 Ajouter Joueur</button>
@@ -150,17 +161,17 @@ onAuthStateChanged(auth, async user=>{
 
   userUID = user.uid;
 
-  // Chercher la guilde créée par cet utilisateur
+  // Chercher la guilde approuvée de cet utilisateur
   const q = query(collection(db,"guildRequests"), where("createdBy","==",userUID));
   const snap = await getDocs(q);
 
   if(snap.empty){
     alert("Vous n'avez pas de guilde");
-    location.href="guildForm.html"; // Redirige vers création si pas de guilde
+    location.href="guildes.html"; // Redirige vers création si pas de guilde
     return;
   }
 
-  const guildDoc = snap.docs[0]; // On prend la première guilde créée par l'utilisateur
+  const guildDoc = snap.docs[0]; 
   currentGuildId = guildDoc.id;
 
   loadGuild();
@@ -176,9 +187,19 @@ async function loadGuild(){
   }
 
   const guild = snap.data();
-  document.getElementById("guildLogo").src = guild.logoURL || "";
+
+  // Logo ou placeholder
+  document.getElementById("guildLogo").src = guild.logoURL || "https://via.placeholder.com/150";
   document.getElementById("guildName").textContent = guild.guildName;
   document.getElementById("guildLevel").textContent = "Niveau : "+(guild.level || 0);
+
+  // Badge si admin a validé
+  const badgeEl = document.getElementById("guildBadge");
+  if(guild.badgeV){
+    badgeEl.style.display="inline-block";
+  } else {
+    badgeEl.style.display="none";
+  }
 
   // Joueurs
   const list = document.getElementById("playersList");

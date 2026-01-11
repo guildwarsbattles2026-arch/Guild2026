@@ -81,7 +81,7 @@ button:disabled{opacity:0.6}
 <input id="guildName" required>
 
 <label>Nom du chef</label>
-<input id="leaderName" required placeholder="Nom du chef">
+<input id="leaderName" required>
 
 <label>UID du chef</label>
 <input id="leaderUID" required placeholder="UID du chef Free Fire">
@@ -107,7 +107,7 @@ import {
   query, where, getDocs, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-/* 🔥 MÊME CONFIG QUE PROFIL */
+/* 🔥 CONFIG FIREBASE */
 const firebaseConfig = {
   apiKey: "AIzaSyCGuqE5sC6uRppfdsNXLSQEOjvm0doYOr4",
   authDomain: "guildwarsbattles2026.firebaseapp.com",
@@ -133,8 +133,7 @@ onAuthStateChanged(auth, async user=>{
 
   userUID = user.uid;
 
-  // Pré-remplissage modifiable
-  leaderUID.value = user.uid;
+  // Ne plus forcer leaderUID, il est maintenant modifiable
   leaderName.value = user.displayName || "";
 
   const q = query(
@@ -199,7 +198,7 @@ guildForm.onsubmit = async e=>{
   await addDoc(collection(db,"guildRequests"),{
     guildName:guildName.value,
     leaderName:leaderName.value,
-    leaderUID:leaderUID.value,
+    leaderUID:leaderUID.value, // Maintenant récupéré depuis le champ modifiable
     players:playersData,
     createdBy:userUID,
     status:"pending",

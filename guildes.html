@@ -81,7 +81,7 @@ button:disabled{opacity:0.6}
 <input id="guildName" required>
 
 <label>Nom du chef</label>
-<input id="leaderName" required>
+<input id="leaderName" required placeholder="Nom du chef">
 
 <label>UID du chef</label>
 <input id="leaderUID" required placeholder="UID du chef Free Fire">
@@ -132,6 +132,8 @@ onAuthStateChanged(auth, async user=>{
   }
 
   userUID = user.uid;
+
+  // Pré-remplissage modifiable
   leaderUID.value = user.uid;
   leaderName.value = user.displayName || "";
 
@@ -197,7 +199,7 @@ guildForm.onsubmit = async e=>{
   await addDoc(collection(db,"guildRequests"),{
     guildName:guildName.value,
     leaderName:leaderName.value,
-    leaderUID:userUID,
+    leaderUID:leaderUID.value,
     players:playersData,
     createdBy:userUID,
     status:"pending",

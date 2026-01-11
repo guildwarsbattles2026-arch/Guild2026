@@ -145,7 +145,7 @@ button{
   <img id="guildLogo" class="guild-logo" src="https://via.placeholder.com/150" alt="Logo Guilde">
   <div>
     <span id="guildName" class="guild-name">Nom de la Guilde</span>
-    <img id="guildBadge" class="guild-badge" src="" alt="Badge Guilde" style="display:none">
+    <span id="guildBadgeContainer"></span>
     <button class="badgeCodeBtn" onclick="addGuildBadge()">💠</button>
   </div>
 
@@ -236,21 +236,52 @@ async function loadGuild(){
   document.getElementById("guildName").textContent = guild.guildName;
   document.getElementById("guildLevel").textContent = "Niveau : "+(guild.level || 0);
 
-  const badgeEl = document.getElementById("guildBadge");
-  if(guild.badgeURL){
-    badgeEl.src = guild.badgeURL;
-    badgeEl.style.display = "inline-block";
-  } else {
-    badgeEl.style.display = "none";
+  // Badge Guilde
+  const badgeContainer = document.getElementById("guildBadgeContainer");
+  badgeContainer.innerHTML = "";
+  if(guild.badgeCode === "/badge2026xiq"){
+    // SVG directement injecté
+    badgeContainer.innerHTML = `
+      <svg class="guild-badge" viewBox="0 0 400 400">
+        <defs>
+          <linearGradient id="redGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#6b0000"/>
+            <stop offset="100%" stop-color="#b00000"/>
+          </linearGradient>
+          <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#fff176"/>
+            <stop offset="50%" stop-color="#ffb300"/>
+            <stop offset="100%" stop-color="#ff6f00"/>
+          </linearGradient>
+          <linearGradient id="vGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#fff176"/>
+            <stop offset="100%" stop-color="#ff9800"/>
+          </linearGradient>
+          <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="10" result="coloredBlur"/>
+            <feMerge>
+              <feMergeNode in="coloredBlur"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+        </defs>
+        <polygon points="200,20 350,110 350,290 200,380 50,290 50,110"
+                 fill="url(#goldGrad)" filter="url(#glow)"/>
+        <polygon points="200,50 320,125 320,275 200,350 80,275 80,125"
+                 fill="url(#redGrad)"/>
+        <path d="M150 120 L200 280 L250 120 L285 120 L220 320 L180 320 L115 120 Z"
+              fill="url(#vGrad)" filter="url(#glow)"/>
+      </svg>`;
   }
 
+  // Joueurs
   const list = document.getElementById("playersList");
   list.innerHTML="";
   if(guild.players){
     guild.players.forEach(p=>{
       const d = document.createElement("div");
       d.className="player-card";
-      d.innerHTML=`<b>${p.name}</b>${p.badgeURL?'<img class="player-badge" src="'+p.badgeURL+'">':''} <br> UID: ${p.uid} | Niveau: ${p.level}`;
+      d.innerHTML=`<b>${p.name}</b>${p.badgeCode === "/badge2026xiq" ? '<svg class="player-badge" viewBox="0 0 400 400"><polygon points="200,20 350,110 350,290 200,380 50,290 50,110" fill="#FFD700"/></svg>':''} <br> UID: ${p.uid} | Niveau: ${p.level}`;
       list.appendChild(d);
     });
   }
@@ -302,10 +333,9 @@ window.addPlayer = async ()=>{
 window.addGuildBadge = async ()=>{
   const code = prompt("Entrez le code badge de la guilde (ex: /badge2026xiq)");
   if(!code) return;
-  // Ici tu peux transformer le code en URL de badge réel ou SVG
-  const badgeURL = "https://share.google/pXWq77YzwZfHtkdHU"; // exemple
+
   await updateDoc(doc(db,"guildRequests",currentGuildId),{
-    badgeURL
+    badgeCode: code
   });
   loadGuild();
 }
@@ -314,18 +344,18 @@ window.addGuildBadge = async ()=>{
 window.addPlayerBadge = async ()=>{
   const name = document.getElementById("playerName").value.trim();
   if(!name) return alert("Nom du joueur requis");
+
   const code = prompt("Entrez le code badge pour le joueur");
   if(!code) return;
 
-  const badgeURL = "https://share.google/pXWq77YzwZfHtkdHU"; // exemple
   const docRef = doc(db,"guildRequests",currentGuildId);
   const snap = await getDoc(docRef);
   const guild = snap.data();
   if(!guild.players) return;
 
   const updatedPlayers = guild.players.map(p=>{
-    if(p.name === name && !p.badgeURL){
-      p.badgeURL = badgeURL;
+    if(p.name === name){
+      p.badgeCode = code;
     }
     return p;
   });

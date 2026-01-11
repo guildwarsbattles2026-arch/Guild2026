@@ -94,7 +94,7 @@ button:hover{
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-import { getFirestore, doc, getDoc, setDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getFirestore, doc, getDoc, setDoc, updateDoc, serverTimestamp, query, collection, where, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 /* 🔥 FIREBASE CONFIG */
 const firebaseConfig = {
@@ -148,13 +148,22 @@ onAuthStateChanged(auth, async user=>{
     : "Inconnu";
 
   /* ===== GESTION GUILDE ===== */
-  const userGuildId = data.guildId || null;
   const guildBtn = document.getElementById("guildActionBtn");
 
-  if(userGuildId){
-    guildBtn.textContent = "Aller vers ma guilde 🏰";
-    guildBtn.onclick = ()=> location.href="guildProfile.html";
-  }else{
+  // Chercher si l'utilisateur a une guilde approuvée
+  const q = query(collection(db,"guildRequests"), where("createdBy","==",user.uid));
+  const snapGuild = await getDocs(q);
+
+  if(!snapGuild.empty){
+    const guildData = snapGuild.docs[0].data();
+    if(guildData.status === "approved"){
+      guildBtn.textContent = "Aller vers ma guilde 🏰";
+      guildBtn.onclick = ()=> location.href="guildProfil.html";
+    } else {
+      guildBtn.textContent = "Demande en attente ⏳";
+      guildBtn.onclick = ()=> alert("Votre demande de guilde est en attente d'approbation.");
+    }
+  } else {
     guildBtn.textContent = "Demander création de guilde";
     guildBtn.onclick = ()=> location.href="guildes.html";
   }

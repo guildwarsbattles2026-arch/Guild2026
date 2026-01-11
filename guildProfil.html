@@ -66,12 +66,13 @@ header h1{
   color:#00ffcc;
 }
 button{
-  padding:10px 14px;
+  padding:8px 12px;
   border:none;
   border-radius:12px;
   font-weight:bold;
   cursor:pointer;
   margin:5px;
+  font-size:0.9rem;
 }
 .addPlayerBtn{
   background:rgba(255,0,0,0.3);
@@ -99,9 +100,19 @@ button{
   background:rgba(255,0,0,0.1);
   border:2px solid rgba(255,0,0,0.3);
   border-radius:12px;
-  padding:10px;
-  margin-top:10px;
+  padding:6px 10px;
+  margin-top:6px;
   text-align:left;
+  font-size:0.85rem;
+  opacity:0.85;
+  position:relative;
+}
+.player-badge{
+  width:20px;
+  height:20px;
+  vertical-align:middle;
+  margin-left:6px;
+  border-radius:50%;
 }
 #logoPreview{
   display:block;
@@ -112,35 +123,14 @@ button{
   object-fit:cover;
   border:3px solid #00aaff;
 }
-.code-btn{
-  background:rgba(255,255,255,0.05);
+.badgeCodeBtn{
+  background:#444;
   color:#fff;
   font-size:0.8rem;
-  border:1px dashed #fff;
-  margin-top:8px;
+  padding:4px 6px;
+  border-radius:6px;
+  margin-left:5px;
   cursor:pointer;
-}
-.mini-card{
-  display:inline-block;
-  margin:5px;
-  padding:6px 10px;
-  border-radius:8px;
-  background:rgba(255,255,255,0.05);
-  font-size:0.75rem;
-  text-align:center;
-  color:#fff;
-  position:relative;
-}
-.mini-card .badge-mini{
-  width:16px;
-  height:16px;
-  vertical-align:middle;
-  margin-left:4px;
-}
-.mini-card span{
-  display:block;
-  opacity:0.7;
-  font-size:0.65rem;
 }
 </style>
 </head>
@@ -156,6 +146,7 @@ button{
   <div>
     <span id="guildName" class="guild-name">Nom de la Guilde</span>
     <img id="guildBadge" class="guild-badge" src="" alt="Badge Guilde" style="display:none">
+    <button class="badgeCodeBtn" onclick="addGuildBadge()">💠</button>
   </div>
 
   <div id="guildLevel" class="guild-level">Niveau : 0</div>
@@ -173,9 +164,8 @@ button{
     <input id="playerUID" placeholder="UID du joueur">
     <label>Niveau :</label>
     <input type="number" id="playerLevel" min="50" placeholder="50">
-    <label>Code Badge (optionnel) :</label>
-    <input id="playerBadgeCode" placeholder="/badge2026xiq">
     <button onclick="addPlayer()">Ajouter</button>
+    <button class="badgeCodeBtn" onclick="addPlayerBadge()">💠 Badge Joueur</button>
   </div>
 
   <h3>Joueurs :</h3>
@@ -206,6 +196,7 @@ const auth = getAuth(app);
 let userUID;
 let currentGuildId;
 
+/* 🔐 AUTH CHECK + Récupère la guilde de l'utilisateur */
 onAuthStateChanged(auth, async user=>{
   if(!user){
     location.href="index.html";
@@ -229,6 +220,7 @@ onAuthStateChanged(auth, async user=>{
   loadGuild();
 });
 
+/* 🔐 LOAD GUILDE */
 async function loadGuild(){
   const docRef = doc(db,"guildRequests",currentGuildId);
   const snap = await getDoc(docRef);
@@ -257,20 +249,14 @@ async function loadGuild(){
   if(guild.players){
     guild.players.forEach(p=>{
       const d = document.createElement("div");
-      d.className="mini-card";
-
-      let badgeHTML = "";
-      if(p.badgeCode === "/badge2026xiq"){
-        badgeHTML = `<img class="badge-mini" src="badgeV.svg" alt="Badge">`; // tu peux mettre le chemin réel
-      }
-
-      d.innerHTML=`<b>${p.name}${badgeHTML}</b><span>UID: ${p.uid} | LVL: ${p.level}</span>`;
+      d.className="player-card";
+      d.innerHTML=`<b>${p.name}</b>${p.badgeURL?'<img class="player-badge" src="'+p.badgeURL+'">':''} <br> UID: ${p.uid} | Niveau: ${p.level}`;
       list.appendChild(d);
     });
   }
 }
 
-/* Logo */
+/* 🔄 Changement Logo */
 document.getElementById("logoInput").onchange = async (e)=>{
   const file = e.target.files[0];
   if(!file) return;
@@ -287,7 +273,7 @@ document.getElementById("logoInput").onchange = async (e)=>{
   document.getElementById("logoPreview").src = url;
 }
 
-/* Joueurs */
+/* 🔄 Joueurs */
 window.togglePlayerModule = ()=>{
   const m = document.getElementById("playerModule");
   m.style.display = m.style.display==="block" ? "none" : "block";
@@ -297,20 +283,54 @@ window.addPlayer = async ()=>{
   const name = document.getElementById("playerName").value.trim();
   const uid = document.getElementById("playerUID").value.trim();
   const level = Number(document.getElementById("playerLevel").value);
-  const badgeCode = document.getElementById("playerBadgeCode").value.trim();
 
   if(!name || !uid || level<50) return alert("Tous les champs sont obligatoires et niveau >=50");
 
   await updateDoc(doc(db,"guildRequests",currentGuildId),{
-    players: arrayUnion({name, uid, level, badgeCode})
+    players: arrayUnion({name, uid, level})
   });
 
   document.getElementById("playerName").value="";
   document.getElementById("playerUID").value="";
   document.getElementById("playerLevel").value="";
-  document.getElementById("playerBadgeCode").value="";
   document.getElementById("playerModule").style.display="none";
 
+  loadGuild();
+}
+
+/* 🔹 Ajouter Badge Guilde */
+window.addGuildBadge = async ()=>{
+  const code = prompt("Entrez le code badge de la guilde (ex: /badge2026xiq)");
+  if(!code) return;
+  // Ici tu peux transformer le code en URL de badge réel ou SVG
+  const badgeURL = "https://share.google/pXWq77YzwZfHtkdHU"; // exemple
+  await updateDoc(doc(db,"guildRequests",currentGuildId),{
+    badgeURL
+  });
+  loadGuild();
+}
+
+/* 🔹 Ajouter Badge Joueur */
+window.addPlayerBadge = async ()=>{
+  const name = document.getElementById("playerName").value.trim();
+  if(!name) return alert("Nom du joueur requis");
+  const code = prompt("Entrez le code badge pour le joueur");
+  if(!code) return;
+
+  const badgeURL = "https://share.google/pXWq77YzwZfHtkdHU"; // exemple
+  const docRef = doc(db,"guildRequests",currentGuildId);
+  const snap = await getDoc(docRef);
+  const guild = snap.data();
+  if(!guild.players) return;
+
+  const updatedPlayers = guild.players.map(p=>{
+    if(p.name === name && !p.badgeURL){
+      p.badgeURL = badgeURL;
+    }
+    return p;
+  });
+
+  await updateDoc(docRef,{players: updatedPlayers});
   loadGuild();
 }
 </script>

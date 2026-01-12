@@ -14,7 +14,33 @@
 }
 *{box-sizing:border-box;font-family:var(--font)}
 body{margin:0;background:var(--bg);color:var(--text)}
-header{padding:15px;text-align:center;font-size:22px;font-weight:700;background:#000;border-bottom:1px solid var(--border)}
+header{
+  padding:15px;
+  text-align:center;
+  font-size:22px;
+  font-weight:700;
+  background:#000;
+  border-bottom:1px solid var(--border);
+  position:relative;
+}
+.record-live{
+  position:absolute;
+  right:15px;
+  top:12px;
+  padding:6px 12px;
+  border-radius:20px;
+  background:#b00020;
+  color:#fff;
+  font-size:13px;
+  font-weight:bold;
+  display:none;
+  animation:pulse 1.2s infinite;
+}
+@keyframes pulse{
+  0%{box-shadow:0 0 0 0 rgba(176,0,32,.6)}
+  70%{box-shadow:0 0 0 10px rgba(176,0,32,0)}
+  100%{box-shadow:0 0 0 0 rgba(176,0,32,0)}
+}
 .container{max-width:1200px;margin:20px auto;padding:10px}
 .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:15px;margin-bottom:20px}
 .inline{display:flex;align-items:center;gap:8px;cursor:pointer;}
@@ -25,11 +51,19 @@ header{padding:15px;text-align:center;font-size:22px;font-weight:700;background:
 .flex-row{display:flex;gap:20px;flex-wrap:wrap}
 .live-card{flex:1;min-width:350px;max-width:600px}
 .timer{margin-top:6px;font-size:14px;color:#ccc}
+.record-info{
+  margin-top:10px;
+  font-size:14px;
+  color:#ffb3b3;
+}
 </style>
 </head>
 
 <body>
-<header>FF GuildwarsBattles2026 — LIVE</header>
+<header>
+  FF GuildwarsBattles2026 — LIVE
+  <div id="recordBadge" class="record-live">🔴 RECORD LIVE</div>
+</header>
 
 <div class="container">
 
@@ -40,6 +74,13 @@ header{padding:15px;text-align:center;font-size:22px;font-weight:700;background:
       <b id="profileName">Nom Membre</b><br>
       <span id="profileEmail"></span>
     </div>
+  </div>
+
+  <!-- INFO RECORD -->
+  <div class="card" id="recordCard" style="display:none">
+    <b>🎥 Enregistrement en cours</b>
+    <div class="record-info" id="recordUser"></div>
+    <div class="timer" id="recordTimer"></div>
   </div>
 
   <!-- MA GUILDE -->
@@ -55,16 +96,15 @@ header{padding:15px;text-align:center;font-size:22px;font-weight:700;background:
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { 
-  getAuth,
-  onAuthStateChanged
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-import { 
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import {
   getFirestore,
   collection,
   query,
   where,
-  getDocs
+  getDocs,
+  doc,
+  onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 /* 🔥 CONFIG FIREBASE */
@@ -81,10 +121,10 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-/* ===== CONNEXION OBLIGATOIRE ===== */
+/* ===== CONNEXION ===== */
 onAuthStateChanged(auth, async user=>{
   if(!user){
-    location.href="index.html"; // ← redirection obligatoire si pas connecté
+    location.href="index.html";
     return;
   }
 
@@ -92,13 +132,39 @@ onAuthStateChanged(auth, async user=>{
   profileName.textContent = user.displayName || "Membre";
   profileEmail.textContent = user.email;
 
-  document.getElementById("userProfile").onclick = ()=>{
-    window.location.href = "profil.html"; // → page profil
-  };
+  userProfile.onclick = ()=> location.href="profil.html";
 
   loadMyGuild(user.uid);
   loadLiveBattles();
+  listenRecordLive();
 });
+
+/* ================= RECORD LIVE ================= */
+function listenRecordLive(){
+  const ref = doc(db,"liveRecord","current");
+
+  onSnapshot(ref, snap=>{
+    if(!snap.exists() || !snap.data().active){
+      recordBadge.style.display="none";
+      recordCard.style.display="none";
+      return;
+    }
+
+    const d = snap.data();
+    recordBadge.style.display="block";
+    recordCard.style.display="block";
+    recordUser.textContent = `🎙️ Utilisé par : ${d.userName}`;
+
+    const start = d.startedAt?.seconds
+      ? d.startedAt.seconds * 1000
+      : Date.now();
+
+    setInterval(()=>{
+      const s = Math.floor((Date.now() - start)/1000);
+      recordTimer.textContent = `⏱️ Temps écoulé : ${s}s`;
+    },1000);
+  });
+}
 
 /* ================= MA GUILDE ================= */
 async function loadMyGuild(uid){
@@ -125,7 +191,7 @@ async function loadMyGuild(uid){
   });
 }
 
-/* ================= AFFRONTEMENTS LIVE ================= */
+/* ================= LIVE BATTLES ================= */
 async function loadLiveBattles(){
   const q = query(collection(db,"guilds"), where("status","==","approved"));
   const snap = await getDocs(q);

@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Vérification des demandes | FF GuildwarsBattles2026</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+body{
+  margin:0;
+  font-family:'Poppins',sans-serif;
+  background:linear-gradient(135deg,#000,#2c2c2c);
+  color:#fff;
+}
+header{
+  background:rgba(0,0,0,0.7);
+  padding:20px;
+  text-align:center;
+  border-bottom:1px solid rgba(255,255,255,0.15);
+}
+header h1{
+  margin:0;
+  font-size:1.8rem;
+  background:linear-gradient(90deg,#fff,#aaa);
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+}
+.container{
+  max-width:900px;
+  margin:30px auto;
+  padding:20px;
+}
+.request{
+  background:rgba(255,255,255,0.08);
+  border-radius:18px;
+  padding:20px;
+  margin-bottom:20px;
+  box-shadow:0 0 20px rgba(0,170,255,0.25);
+}
+.request h2{
+  margin:0 0 10px;
+  color:#00aaff;
+}
+.info{margin:6px 0}
+.players{
+  margin-top:10px;
+  padding-left:15px;
+}
+.player{
+  background:rgba(0,0,0,0.4);
+  padding:8px;
+  border-radius:10px;
+  margin-bottom:6px;
+}
+.status{
+  margin-top:10px;
+  font-weight:bold;
+}
+.pending{color:#FFD700}
+.approved{color:#00ff88}
+.rejected{color:#ff5555}
+</style>
+</head>
+
+<body>
+
+<header>
+  <h1>📋 Demandes de Guildes</h1>
+</header>
+
+<div class="container" id="requestsContainer">
+  Chargement des demandes...
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import {
+  getFirestore, collection, getDocs, query, orderBy, doc, getDoc
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+/* 🔥 CONFIG FIREBASE */
+const firebaseConfig = {
+  apiKey: "AIzaSyCGuqE5sC6uRppfdsNXLSQEOjvm0doYOr4",
+  authDomain: "guildwarsbattles2026.firebaseapp.com",
+  projectId: "guildwarsbattles2026",
+  storageBucket: "guildwarsbattles2026.firebasestorage.app",
+  messagingSenderId: "116728335274",
+  appId: "1:116728335274:web:3a245ad4254caebeb779d3"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const container = document.getElementById("requestsContainer");
+
+/* 🔐 VÉRIF ADMIN */
+onAuthStateChanged(auth, async user=>{
+  if(!user){
+    location.href="index.html";
+    return;
+  }
+
+  const userRef = doc(db,"users",user.uid);
+  const userSnap = await getDoc(userRef);
+
+  if(!userSnap.exists() || userSnap.data().role !== "admin"){
+    alert("Accès refusé ❌");
+    location.href="profil.html";
+    return;
+  }
+
+  loadRequests();
+});
+
+/* 📥 CHARGEMENT DES DEMANDES */
+async function loadRequests(){
+  container.innerHTML = "";
+
+  const q = query(
+    collection(db,"guildRequests"),
+    orderBy("createdAt","desc")
+  );
+
+  const snap = await getDocs(q);
+
+  if(snap.empty){
+    container.innerHTML = "<p>Aucune demande trouvée.</p>";
+    return;
+  }
+
+  snap.forEach(docu=>{
+    const d = docu.data();
+
+    const div = document.createElement("div");
+    div.className = "request";
+
+    const statusClass =
+      d.status === "approved" ? "approved" :
+      d.status === "rejected" ? "rejected" : "pending";
+
+    div.innerHTML = `
+      <h2>${d.guildName}</h2>
+      <div class="info"><b>Chef :</b> ${d.leaderName}</div>
+      <div class="info"><b>UID Chef :</b> ${d.leaderUID}</div>
+      <div class="info"><b>Créé par :</b> ${d.createdBy}</div>
+      <div class="info"><b>Date :</b> ${
+        d.createdAt
+          ? new Date(d.createdAt.seconds*1000).toLocaleString()
+          : "Inconnue"
+      }</div>
+
+      <div class="players">
+        <b>👥 Joueurs :</b>
+        ${d.players.map(p=>`
+          <div class="player">
+            ${p.name} | UID: ${p.uid} | Niveau: ${p.level}
+          </div>
+        `).join("")}
+      </div>
+
+      <div class="status ${statusClass}">
+        Statut : ${d.status}
+      </div>
+    `;
+
+    container.appendChild(div);
+  });
+}
+</script>
+
+</body>
+</html>

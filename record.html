@@ -99,6 +99,11 @@ input{
   </div>
 
   <button id="recordBtn" class="locked" style="display:none">Vérification…</button>
+
+  <button id="startScreenRecord" style="margin-top:15px;background:#2196f3;color:#fff;display:none">📹 Filmer l'écran</button>
+  <button id="stopScreenRecord" style="margin-top:10px;background:#f44336;color:#fff;display:none">⏹️ Arrêter l'enregistrement</button>
+  <a id="downloadLink" style="display:none;margin-top:10px;color:#4caf50" download="recording.webm">💾 Télécharger la vidéo</a>
+
   <div class="status" id="recordStatus"></div>
 </div>
 
@@ -108,9 +113,7 @@ import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/
 import {
   getFirestore,
   doc,
-  collection,
   setDoc,
-  updateDoc,
   serverTimestamp,
   onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
@@ -133,16 +136,12 @@ const recordRef = doc(db,"liveRecord","current");
 let currentUser = null;
 let isOwnerSlot1 = false;
 let isOwnerSlot2 = false;
-let mySlot = null; // 1 ou 2
-
+let mySlot = null;
 let guildData = {};
 
 /* 🔐 AUTH */
-onAuthStateChanged(auth, user=>{
-  if(!user){
-    location.href="index.html";
-    return;
-  }
+onAuthStateChanged(auth,user=>{
+  if(!user) location.href="index.html";
   currentUser = user;
 });
 
@@ -156,18 +155,16 @@ submitInfoBtn.onclick = async ()=>{
   for(const div of playerInputs){
     const uid = div.children[0].value.trim();
     const name = div.children[1].value.trim();
-    if(!uid || !name){
-      return alert("Tous les joueurs doivent avoir UID et nom");
-    }
+    if(!uid || !name) return alert("Tous les joueurs doivent avoir UID et nom");
     players.push({uid,name});
   }
-
   if(players.length !==4) return alert("Il faut exactement 4 joueurs");
 
   guildData = {guildName:gName, leaderUID:lUID, players};
 
   recordForm.style.display="none";
   recordBtn.style.display="block";
+  startScreenRecord.style.display="block";
 
   checkRecordStatus();
 };
@@ -181,10 +178,8 @@ function checkRecordStatus(){
     let statusText = "";
     let occupiedSlots = 0;
 
-    // Vérifier les slots
     if(slots[0]) occupiedSlots++;
     if(slots[1]) occupiedSlots++;
-
     statusText = `${occupiedSlots}/2 sessions en cours`;
 
     if(slots[0] && slots[0].usedBy === currentUser.uid){
@@ -213,25 +208,20 @@ function checkRecordStatus(){
   });
 }
 
-/* ===== START / STOP ===== */
+/* ===== START / STOP RECORD ===== */
 recordBtn.onclick = async ()=>{
   if(!currentUser || mySlot===null) return;
-
-  const snap = await onSnapshot(recordRef,()=>{}); // fetch current slots
+  const snap = await onSnapshot(recordRef,()=>{});
   const docData = snap.exists() ? snap.data() : {slots:[]};
   const slots = docData.slots || [];
 
-  // STOP
   if((mySlot===0 && isOwnerSlot1) || (mySlot===1 && isOwnerSlot2)){
     slots[mySlot] = null;
     await setDoc(recordRef,{slots},{merge:true});
-    isOwnerSlot1=false;
-    isOwnerSlot2=false;
-    mySlot=null;
+    isOwnerSlot1=false; isOwnerSlot2=false; mySlot=null;
     return;
   }
 
-  // START
   const slotInfo = {
     usedBy:currentUser.uid,
     userName:currentUser.displayName||"Membre",
@@ -240,6 +230,39 @@ recordBtn.onclick = async ()=>{
   };
   slots[mySlot] = slotInfo;
   await setDoc(recordRef,{slots},{merge:true});
+};
+
+/* ===== SCREEN RECORDING ===== */
+let mediaRecorder, recordedChunks = [];
+
+startScreenRecord.onclick = async ()=>{
+  try{
+    const stream = await navigator.mediaDevices.getDisplayMedia({video:true,audio:false});
+    mediaRecorder = new MediaRecorder(stream,{mimeType:'video/webm; codecs=vp9'});
+    mediaRecorder.ondataavailable = e=>{if(e.data.size>0) recordedChunks.push(e.data);}
+    mediaRecorder.onstop = ()=>{
+      const blob = new Blob(recordedChunks,{type:'video/webm'});
+      recordedChunks=[];
+      const url = URL.createObjectURL(blob);
+      downloadLink.href = url;
+      downloadLink.style.display="block";
+    };
+    mediaRecorder.start();
+    startScreenRecord.style.display="none";
+    stopScreenRecord.style.display="block";
+    recordStatus.textContent += " | 🎬 Enregistrement écran actif";
+  }catch(err){
+    alert("Impossible de capturer l'écran : "+err);
+  }
+};
+
+stopScreenRecord.onclick = ()=>{
+  if(mediaRecorder && mediaRecorder.state!=="inactive"){
+    mediaRecorder.stop();
+    stopScreenRecord.style.display="none";
+    startScreenRecord.style.display="block";
+    recordStatus.textContent = recordStatus.textContent.replace(" | 🎬 Enregistrement écran actif","");
+  }
 };
 </script>
 

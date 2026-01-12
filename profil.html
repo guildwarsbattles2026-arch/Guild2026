@@ -88,6 +88,10 @@ button:hover{
   <div class="info"><b>Dernière connexion :</b> <span id="lastLogin"></span></div>
 
   <button id="guildActionBtn">Demander création de guilde</button>
+
+  <!-- 🎥 BOUTON RECORD -->
+  <button id="recordBtn">Aller au record 🎥</button>
+
   <button id="logoutBtn">Se déconnecter</button>
 </div>
 
@@ -107,6 +111,7 @@ const firebaseConfig = {
 };
 
 const ADMIN_CODE = "FF-ADMIN-2026";
+const RECORD_CODE = "20266202";
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -150,7 +155,6 @@ onAuthStateChanged(auth, async user=>{
   /* ===== GESTION GUILDE ===== */
   const guildBtn = document.getElementById("guildActionBtn");
 
-  // Chercher si l'utilisateur a une guilde approuvée
   const q = query(collection(db,"guildRequests"), where("createdBy","==",user.uid));
   const snapGuild = await getDocs(q);
 
@@ -161,7 +165,7 @@ onAuthStateChanged(auth, async user=>{
       guildBtn.onclick = ()=> location.href="guildProfil.html";
     } else {
       guildBtn.textContent = "Demande en attente ⏳";
-      guildBtn.onclick = ()=> alert("Votre demande de guilde est en attente d'approbation.");
+      guildBtn.onclick = ()=> alert("Votre demande de guilde est en attente.");
     }
   } else {
     guildBtn.textContent = "Demander création de guilde";
@@ -169,7 +173,19 @@ onAuthStateChanged(auth, async user=>{
   }
 });
 
-/* ===== BOUTON ADMIN 🎭 ===== */
+/* 🎥 ACCÈS RECORD */
+recordBtn.onclick = ()=>{
+  const code = prompt("Entrez le code d’accès 🎥");
+  if(!code) return;
+
+  if(code === RECORD_CODE){
+    location.href = "record.html";
+  }else{
+    alert("Code incorrect ❌");
+  }
+};
+
+/* ===== BOUTON ADMIN ===== */
 adminBtn.onclick = async ()=>{
   if(currentRole === "admin"){
     location.href="admin.html";
@@ -180,9 +196,7 @@ adminBtn.onclick = async ()=>{
   if(!code) return;
 
   if(code === ADMIN_CODE){
-    await updateDoc(doc(db,"users",currentUser.uid),{
-      role:"admin"
-    });
+    await updateDoc(doc(db,"users",currentUser.uid),{ role:"admin" });
     alert("Accès admin activé ✅");
     location.href="admin.html";
   }else{

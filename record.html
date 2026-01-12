@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FF GuildwarsBattles2026 | Record</title>
+
+<style>
+body{
+  margin:0;
+  font-family:'Segoe UI',system-ui;
+  background:#0a0a0a;
+  color:#fff;
+  text-align:center;
+}
+header{
+  padding:15px;
+  font-size:22px;
+  font-weight:700;
+  background:#000;
+  border-bottom:1px solid #2e2e2e;
+}
+.container{
+  max-width:500px;
+  margin:40px auto;
+  background:#1a1a1a;
+  border-radius:16px;
+  padding:25px;
+  border:1px solid #2e2e2e;
+}
+button{
+  width:100%;
+  padding:16px;
+  margin-top:15px;
+  border:none;
+  border-radius:14px;
+  font-weight:bold;
+  cursor:pointer;
+  font-size:16px;
+}
+.start{background:#4caf50;color:#000}
+.stop{background:#b00020;color:#fff}
+.locked{background:#555;color:#aaa;cursor:not-allowed}
+.status{
+  margin-top:20px;
+  font-size:15px;
+  color:#ccc;
+}
+</style>
+</head>
+
+<body>
+
+<header>🎥 Record LIVE</header>
+
+<div class="container">
+  <h2 id="recordTitle">Chargement…</h2>
+  <button id="recordBtn" class="locked">Vérification…</button>
+  <div class="status" id="recordStatus"></div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import {
+  getFirestore,
+  doc,
+  onSnapshot,
+  setDoc,
+  updateDoc,
+  serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+/* 🔥 FIREBASE CONFIG (IDENTIQUE) */
+const firebaseConfig = {
+  apiKey: "AIzaSyCGuqE5sC6uRppfdsNXLSQEOjvm0doYOr4",
+  authDomain: "guildwarsbattles2026.firebaseapp.com",
+  projectId: "guildwarsbattles2026",
+  storageBucket: "guildwarsbattles2026.firebasestorage.app",
+  messagingSenderId: "116728335274",
+  appId: "1:116728335274:web:3a245ad4254caebeb779d3"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+const recordRef = doc(db,"liveRecord","current");
+
+let currentUser = null;
+let isOwner = false;
+
+/* 🔐 AUTH */
+onAuthStateChanged(auth, user=>{
+  if(!user){
+    location.href="index.html";
+    return;
+  }
+  currentUser = user;
+});
+
+/* 🔴 LISTENER LIVE */
+onSnapshot(recordRef, snap=>{
+  const btn = recordBtn;
+
+  if(!snap.exists() || snap.data().active === false){
+    recordTitle.textContent = "🎬 Record disponible";
+    recordStatus.textContent = "Personne n'utilise le record actuellement.";
+    btn.textContent = "Démarrer le record";
+    btn.className = "start";
+    btn.disabled = false;
+    isOwner = false;
+    return;
+  }
+
+  const d = snap.data();
+
+  if(d.usedBy === currentUser?.uid){
+    recordTitle.textContent = "🔴 Record en cours (vous)";
+    recordStatus.textContent = "Vous êtes en train de record.";
+    btn.textContent = "Arrêter le record";
+    btn.className = "stop";
+    btn.disabled = false;
+    isOwner = true;
+  }else{
+    recordTitle.textContent = "⛔ Record indisponible";
+    recordStatus.textContent = `Utilisé par ${d.userName}`;
+    btn.textContent = "En cours d’utilisation";
+    btn.className = "locked";
+    btn.disabled = true;
+    isOwner = false;
+  }
+});
+
+/* ▶️ / ⏹️ ACTION */
+recordBtn.onclick = async ()=>{
+  if(!currentUser) return;
+
+  if(isOwner){
+    await updateDoc(recordRef,{
+      active:false
+    });
+  }else{
+    await setDoc(recordRef,{
+      active:true,
+      usedBy:currentUser.uid,
+      userName:currentUser.displayName || "Membre",
+      startedAt:serverTimestamp()
+    });
+  }
+};
+</script>
+
+</body>
+</html>

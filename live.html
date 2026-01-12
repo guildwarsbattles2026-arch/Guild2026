@@ -56,6 +56,10 @@ header{
   font-size:14px;
   color:#ffb3b3;
 }
+.slot-card{background:#1a1a1a;border:1px solid #2e2e2e;border-radius:12px;padding:12px;margin-bottom:15px}
+.slot-header{font-weight:bold;margin-bottom:6px}
+.slot-empty{color:#777;font-style:italic}
+.slot-player{margin-left:10px;font-size:14px}
 </style>
 </head>
 
@@ -76,11 +80,13 @@ header{
     </div>
   </div>
 
-  <!-- INFO RECORD -->
-  <div class="card" id="recordCard" style="display:none">
-    <b>🎥 Enregistrement en cours</b>
-    <div class="record-info" id="recordUser"></div>
-    <div class="timer" id="recordTimer"></div>
+  <!-- RECORD LIVE SLOTS -->
+  <div class="card" id="recordSlotsCard">
+    <b>🎥 Sessions de Record</b>
+    <div id="slotsContainer">
+      <div class="slot-card" id="slot1"><div class="slot-header">Slot 1</div><div class="slot-empty">Libre</div></div>
+      <div class="slot-card" id="slot2"><div class="slot-header">Slot 2</div><div class="slot-empty">Libre</div></div>
+    </div>
   </div>
 
   <!-- MA GUILDE -->
@@ -136,33 +142,38 @@ onAuthStateChanged(auth, async user=>{
 
   loadMyGuild(user.uid);
   loadLiveBattles();
-  listenRecordLive();
+  listenRecordLiveSlots();
 });
 
-/* ================= RECORD LIVE ================= */
-function listenRecordLive(){
+/* ================= RECORD LIVE SLOTS ================= */
+function listenRecordLiveSlots(){
   const ref = doc(db,"liveRecord","current");
 
   onSnapshot(ref, snap=>{
-    if(!snap.exists() || !snap.data().active){
-      recordBadge.style.display="none";
-      recordCard.style.display="none";
-      return;
-    }
+    const data = snap.exists() ? snap.data() : {slots:[]};
+    const slots = data.slots || [];
 
-    const d = snap.data();
-    recordBadge.style.display="block";
-    recordCard.style.display="block";
-    recordUser.textContent = `🎙️ Utilisé par : ${d.userName}`;
+    [0,1].forEach(i=>{
+      const slotDiv = document.getElementById(`slot${i+1}`);
+      slotDiv.innerHTML = `<div class="slot-header">Slot ${i+1}</div>`;
 
-    const start = d.startedAt?.seconds
-      ? d.startedAt.seconds * 1000
-      : Date.now();
+      if(slots[i]){
+        const g = slots[i].guildData || {};
+        let html = `<div>Guilde: <b>${g.guildName||"N/A"}</b></div>`;
+        html += `<div>Chef UID: ${g.leaderUID||"N/A"}</div>`;
+        html += `<div>Joueurs:</div>`;
+        slots[i].guildData?.players?.forEach(p=>{
+          html += `<div class="slot-player">- ${p.name} (UID: ${p.uid})</div>`;
+        });
+        html += `<div class="record-info">Utilisé par: ${slots[i].userName}</div>`;
+        slotDiv.innerHTML += html;
+      } else {
+        slotDiv.innerHTML += `<div class="slot-empty">Libre</div>`;
+      }
+    });
 
-    setInterval(()=>{
-      const s = Math.floor((Date.now() - start)/1000);
-      recordTimer.textContent = `⏱️ Temps écoulé : ${s}s`;
-    },1000);
+    // Badge rouge si au moins un slot actif
+    recordBadge.style.display = slots.some(s=>s)? "block":"none";
   });
 }
 

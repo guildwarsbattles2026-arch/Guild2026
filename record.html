@@ -21,7 +21,7 @@ header{
   border-bottom:1px solid #2e2e2e;
 }
 .container{
-  max-width:500px;
+  max-width:600px;
   margin:40px auto;
   background:#1a1a1a;
   border-radius:16px;
@@ -46,6 +46,23 @@ button{
   font-size:15px;
   color:#ccc;
 }
+input{
+  width:100%;
+  padding:10px;
+  border-radius:10px;
+  border:none;
+  margin-top:10px;
+  background:#000;
+  color:#fff;
+}
+.guild-member-input{
+  display:flex;
+  gap:10px;
+  margin-top:8px;
+}
+.guild-member-input input{
+  flex:1;
+}
 </style>
 </head>
 
@@ -55,7 +72,33 @@ button{
 
 <div class="container">
   <h2 id="recordTitle">Chargement…</h2>
-  <button id="recordBtn" class="locked">Vérification…</button>
+
+  <div id="recordForm">
+    <h3>Remplir les informations avant d’enregistrer</h3>
+    <input id="guildName" placeholder="Nom de la guilde" required>
+    <input id="leaderUID" placeholder="UID du chef" required>
+    <div id="playersInputs">
+      <div class="guild-member-input">
+        <input placeholder="UID joueur 1" required>
+        <input placeholder="Nom joueur 1" required>
+      </div>
+      <div class="guild-member-input">
+        <input placeholder="UID joueur 2" required>
+        <input placeholder="Nom joueur 2" required>
+      </div>
+      <div class="guild-member-input">
+        <input placeholder="UID joueur 3" required>
+        <input placeholder="Nom joueur 3" required>
+      </div>
+      <div class="guild-member-input">
+        <input placeholder="UID joueur 4" required>
+        <input placeholder="Nom joueur 4" required>
+      </div>
+    </div>
+    <button id="submitInfoBtn">✅ Valider infos et commencer</button>
+  </div>
+
+  <button id="recordBtn" class="locked" style="display:none">Vérification…</button>
   <div class="status" id="recordStatus"></div>
 </div>
 
@@ -65,13 +108,14 @@ import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/
 import {
   getFirestore,
   doc,
-  onSnapshot,
+  collection,
   setDoc,
   updateDoc,
-  serverTimestamp
+  serverTimestamp,
+  onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-/* 🔥 FIREBASE CONFIG (IDENTIQUE) */
+/* 🔥 CONFIG FIREBASE */
 const firebaseConfig = {
   apiKey: "AIzaSyCGuqE5sC6uRppfdsNXLSQEOjvm0doYOr4",
   authDomain: "guildwarsbattles2026.firebaseapp.com",
@@ -86,9 +130,12 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 
 const recordRef = doc(db,"liveRecord","current");
-
 let currentUser = null;
-let isOwner = false;
+let isOwnerSlot1 = false;
+let isOwnerSlot2 = false;
+let mySlot = null; // 1 ou 2
+
+let guildData = {};
 
 /* 🔐 AUTH */
 onAuthStateChanged(auth, user=>{
@@ -99,55 +146,100 @@ onAuthStateChanged(auth, user=>{
   currentUser = user;
 });
 
-/* 🔴 LISTENER LIVE */
-onSnapshot(recordRef, snap=>{
-  const btn = recordBtn;
+/* ===== SUBMIT INFOS ===== */
+submitInfoBtn.onclick = async ()=>{
+  const gName = guildName.value.trim();
+  const lUID = leaderUID.value.trim();
+  const playerInputs = Array.from(playersInputs.querySelectorAll(".guild-member-input"));
+  const players = [];
 
-  if(!snap.exists() || snap.data().active === false){
-    recordTitle.textContent = "🎬 Record disponible";
-    recordStatus.textContent = "Personne n'utilise le record actuellement.";
-    btn.textContent = "Démarrer le record";
-    btn.className = "start";
-    btn.disabled = false;
-    isOwner = false;
+  for(const div of playerInputs){
+    const uid = div.children[0].value.trim();
+    const name = div.children[1].value.trim();
+    if(!uid || !name){
+      return alert("Tous les joueurs doivent avoir UID et nom");
+    }
+    players.push({uid,name});
+  }
+
+  if(players.length !==4) return alert("Il faut exactement 4 joueurs");
+
+  guildData = {guildName:gName, leaderUID:lUID, players};
+
+  recordForm.style.display="none";
+  recordBtn.style.display="block";
+
+  checkRecordStatus();
+};
+
+/* ===== LIVE LISTENER ===== */
+function checkRecordStatus(){
+  onSnapshot(recordRef, snap=>{
+    const data = snap.exists() ? snap.data() : {slots:[]};
+    const slots = data.slots || [];
+
+    let statusText = "";
+    let occupiedSlots = 0;
+
+    // Vérifier les slots
+    if(slots[0]) occupiedSlots++;
+    if(slots[1]) occupiedSlots++;
+
+    statusText = `${occupiedSlots}/2 sessions en cours`;
+
+    if(slots[0] && slots[0].usedBy === currentUser.uid){
+      recordBtn.textContent = "Arrêter le record (Slot 1)";
+      recordBtn.className = "stop";
+      isOwnerSlot1 = true;
+      mySlot = 0;
+    } else if(slots[1] && slots[1].usedBy === currentUser.uid){
+      recordBtn.textContent = "Arrêter le record (Slot 2)";
+      recordBtn.className = "stop";
+      isOwnerSlot2 = true;
+      mySlot = 1;
+    } else if(occupiedSlots>=2){
+      recordBtn.textContent = "Tous les slots occupés";
+      recordBtn.className = "locked";
+      recordBtn.disabled = true;
+      mySlot = null;
+    } else {
+      recordBtn.textContent = "Démarrer le record";
+      recordBtn.className = "start";
+      recordBtn.disabled = false;
+      mySlot = slots[0] ? 1 : 0;
+    }
+
+    recordStatus.textContent = statusText;
+  });
+}
+
+/* ===== START / STOP ===== */
+recordBtn.onclick = async ()=>{
+  if(!currentUser || mySlot===null) return;
+
+  const snap = await onSnapshot(recordRef,()=>{}); // fetch current slots
+  const docData = snap.exists() ? snap.data() : {slots:[]};
+  const slots = docData.slots || [];
+
+  // STOP
+  if((mySlot===0 && isOwnerSlot1) || (mySlot===1 && isOwnerSlot2)){
+    slots[mySlot] = null;
+    await setDoc(recordRef,{slots},{merge:true});
+    isOwnerSlot1=false;
+    isOwnerSlot2=false;
+    mySlot=null;
     return;
   }
 
-  const d = snap.data();
-
-  if(d.usedBy === currentUser?.uid){
-    recordTitle.textContent = "🔴 Record en cours (vous)";
-    recordStatus.textContent = "Vous êtes en train de record.";
-    btn.textContent = "Arrêter le record";
-    btn.className = "stop";
-    btn.disabled = false;
-    isOwner = true;
-  }else{
-    recordTitle.textContent = "⛔ Record indisponible";
-    recordStatus.textContent = `Utilisé par ${d.userName}`;
-    btn.textContent = "En cours d’utilisation";
-    btn.className = "locked";
-    btn.disabled = true;
-    isOwner = false;
-  }
-});
-
-/* ▶️ / ⏹️ ACTION */
-recordBtn.onclick = async ()=>{
-  if(!currentUser) return;
-
-  if(isOwner){
-    await updateDoc(recordRef,{
-      active:false
-    });
-  }else{
-    await setDoc(recordRef,{
-      active:true,
-      usedBy:currentUser.uid,
-      userName:currentUser.displayName || "Membre",
-      startedAt:serverTimestamp()
-    });
-  }
+  // START
+  const slotInfo = {
+    usedBy:currentUser.uid,
+    userName:currentUser.displayName||"Membre",
+    startedAt:serverTimestamp(),
+    guildData
+  };
+  slots[mySlot] = slotInfo;
+  await setDoc(recordRef,{slots},{merge:true});
 };
 </script>
 
